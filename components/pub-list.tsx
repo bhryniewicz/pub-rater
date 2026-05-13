@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/hooks/use-user";
 import { type PubListItem } from "@/lib/supabase";
 import Image from "next/image";
 

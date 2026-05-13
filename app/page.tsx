@@ -2,10 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import PubList from "@/components/PubList";
+import PubList from "@/components/pub-list";
+import { AgeGate } from "@/components/age-gate";
 import { supabase, type MapMarker, type PubListItem } from "@/lib/supabase";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/hooks/use-user";
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",
@@ -16,7 +18,7 @@ const AMENITY_ICONS: Record<string, string> = {
   biergarten: "🌻",
 };
 
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
 async function fetchAll<T>(table: string): Promise<T[]> {
   const pageSize = 1000;
@@ -36,7 +38,8 @@ async function fetchAll<T>(table: string): Promise<T[]> {
 }
 
 export default function Home() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [pubList, setPubList] = useState<PubListItem[]>([]);
   const [markersLoaded, setMarkersLoaded] = useState(false);
@@ -57,12 +60,21 @@ export default function Home() {
     });
   }, []);
 
-  console.log(user, "usr");
-
-  console.log(markersLoaded, listLoaded, "loaded");
+  useEffect(() => {
+    if (userLoading || !user) return;
+    supabase
+      .from("profiles")
+      .select("is_onboarded")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data && !data.is_onboarded) router.push("/onboard");
+      });
+  }, [user, userLoading, router]);
 
   return (
     <main className="flex flex-col h-screen">
+      <AgeGate />
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-200 bg-white shrink-0">
         <span className="text-xl">🍺</span>
         <h1 className="font-semibold text-zinc-900">Pub Rater</h1>
@@ -72,6 +84,12 @@ export default function Home() {
               <span className="text-sm text-zinc-500 hidden sm:block">
                 {user.email}
               </span>
+              <Link
+                href="/profile"
+                className="text-sm font-medium text-zinc-700 hover:text-zinc-900 border border-zinc-300 rounded-lg px-3 py-1.5 hover:border-zinc-500 transition-colors"
+              >
+                Profile
+              </Link>
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="text-sm font-medium text-zinc-700 hover:text-zinc-900 border border-zinc-300 rounded-lg px-3 py-1.5 hover:border-zinc-500 transition-colors"

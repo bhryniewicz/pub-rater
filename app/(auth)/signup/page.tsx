@@ -1,53 +1,50 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const signupSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type SignupValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupValues>({ resolver: zodResolver(signupSchema) });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setPending(true);
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  async function onSubmit(values: SignupValues) {
+    const { data, error: signUpError } = await supabase.auth.signUp(values);
 
     if (signUpError) {
-      setPending(false);
-      setError(signUpError.message);
+      setError("root", { message: signUpError.message });
       return;
     }
 
-    // If email confirmation is disabled in Supabase, signUp returns a session
-    // immediately and the user is logged in. Otherwise session will be null.
     if (data.session) {
-      router.push("/");
+      router.push("/onboard");
       return;
     }
 
-    // Email confirmation is on — sign in directly (works once confirmation is off)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setPending(false);
+    const { error: signInError } = await supabase.auth.signInWithPassword(values);
 
     if (signInError) {
-      // Most likely email confirmation is required
-      setError(
-        "Account created! Check your email to confirm it, then log in."
-      );
+      setError("root", {
+        message: "Account created! Check your email to confirm it, then log in.",
+      });
       return;
     }
 
@@ -69,57 +66,42 @@ export default function SignupPage() {
             Create account
           </h2>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="email"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Email
-              </label>
-              <input
+              <Label htmlFor="email">Email</Label>
+              <Input
                 id="email"
                 type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="border border-zinc-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
                 placeholder="you@example.com"
+                {...register("email")}
               />
+              {errors.email && (
+                <p className="text-xs text-red-600">{errors.email.message}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-zinc-700"
-              >
-                Password
-              </label>
-              <input
+              <Label htmlFor="password">Password</Label>
+              <Input
                 id="password"
                 type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border border-zinc-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
                 placeholder="Min. 6 characters"
+                {...register("password")}
               />
+              {errors.password && (
+                <p className="text-xs text-red-600">{errors.password.message}</p>
+              )}
             </div>
 
-            {error && (
+            {errors.root && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {error}
+                {errors.root.message}
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="mt-1 bg-zinc-900 text-white text-sm font-medium rounded-lg px-4 py-2.5 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pending ? "Creating account…" : "Create account"}
-            </button>
+            <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
+              {isSubmitting ? "Creating account…" : "Create account"}
+            </Button>
 
             <p className="text-center text-sm text-zinc-500">
               Already have an account?{" "}
