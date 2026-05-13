@@ -11,19 +11,19 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase, type MapMarker, type Place } from "@/lib/supabase";
 
 // Above this zoom: individual markers
-const CLUSTER_THRESHOLD = 11;
+const CLUSTER_THRESHOLD = 14;
 // At this zoom and above: split 100+ clusters into 2 geographic halves
 const SPLIT_ZOOM = 9;
 // Cluster with this many pubs triggers a geographic split
 const LARGE_CLUSTER = 100;
 
 function gridSizeForZoom(zoom: number): number {
-  return 0.8 / Math.pow(2, zoom - 6);
+  return 0.4 / Math.pow(2, zoom - 6);
 }
 
 type ClusterItem =
   | { type: "pub"; pub: MapMarker }
-  | { type: "cluster"; count: number; lat: number; lon: number };
+  | { type: "cluster"; count: number; lat: number; lon: number; dominantAmenity: string };
 
 function centroid(pubs: MapMarker[]) {
   return {
@@ -121,6 +121,7 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
             count: half.pubs.length,
             lat: half.lat,
             lon: half.lon,
+            dominantAmenity: dominantAmenity(half.pubs),
           });
         }
       }
@@ -130,6 +131,7 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
         count: cell.pubs.length,
         lat: cell.lat,
         lon: cell.lon,
+        dominantAmenity: dominantAmenity(cell.pubs),
       });
     }
   }
@@ -141,31 +143,46 @@ const AMENITY_ICONS: Record<string, string> = {
   bar: "🥂",
   restaurant: "🍽️",
   cafe: "☕",
-  nightclub: "🎶",
-  biergarten: "🌻",
+  nightclub: "🎵",
+  biergarten: "🌳",
+  mixed: "📍",
+};
+
+const AMENITY_COLORS: Record<string, string> = {
+  pub: "#d97706",
+  bar: "#7c3aed",
+  restaurant: "#dc2626",
+  cafe: "#92400e",
+  nightclub: "#db2777",
+  biergarten: "#16a34a",
+  mixed: "#facc15",
 };
 
 function amenityIcon(amenity: string): string {
   return AMENITY_ICONS[amenity] ?? "📍";
 }
 
-function clusterColor(count: number): string {
-  if (count > 99) return "#7c3aed";
-  if (count > 50) return "#2563eb";
-  if (count > 20) return "#0891b2";
-  return "#0d9488";
+function amenityColor(amenity: string): string {
+  return AMENITY_COLORS[amenity] ?? "#4b5563";
 }
 
-function clusterSize(count: number): number {
-  if (count > 99) return 72;
-  if (count > 50) return 64;
-  if (count > 20) return 56;
-  return 48;
+function dominantAmenity(pubs: MapMarker[]): string {
+  const counts: Record<string, number> = {};
+  for (const p of pubs) {
+    counts[p.amenity] = (counts[p.amenity] ?? 0) + 1;
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const top = sorted[0];
+  if (!top) return "pub";
+  if (top[1] / pubs.length < 0.6) return "mixed";
+  return top[0];
 }
+
+const CLUSTER_SIZE = 46;
 
 interface Props {
   markers: MapMarker[];
-  focusedMarker?: { lat: number; lon: number } | null;
+  focusedMarker?: { id: string; lat: number; lon: number } | null;
 }
 
 export default function MapComponent({ markers, focusedMarker }: Props) {
@@ -180,6 +197,11 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
   }, []);
 
   const onMarkerClick = useCallback(async (marker: MapMarker) => {
+    mapRef.current?.flyTo({
+      center: [marker.lon, marker.lat],
+      zoom: Math.max(mapRef.current.getZoom(), 14),
+      duration: 800,
+    });
     setSelectedMarker(marker);
     setSelectedPlace(null);
     setLoadingPlace(true);
@@ -199,7 +221,9 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
       zoom: 16,
       duration: 1200,
     });
-  }, [focusedMarker]);
+    const marker = markers.find((m) => m.id === focusedMarker.id);
+    if (marker) onMarkerClick(marker);
+  }, [focusedMarker]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const snappedZoom = Math.round(zoom);
   const items = useMemo(
@@ -229,9 +253,9 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
 
       {items.map((item, i) => {
         if (item.type === "cluster") {
-          const size = clusterSize(item.count);
-          const bg = clusterColor(item.count);
           const label = item.count > 99 ? "99+" : `${item.count}`;
+          const bg = amenityColor(item.dominantAmenity);
+          const badgeSize = label.length > 2 ? 26 : 22;
           return (
             <Marker
               key={`cluster-${i}`}
@@ -239,39 +263,63 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
               latitude={item.lat}
               anchor="center"
             >
-              <div
-                style={{
-                  width: size,
-                  height: size,
-                  background: bg,
-                  borderRadius: "50%",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontWeight: 700,
-                  fontSize: 11,
-                  fontFamily: "sans-serif",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                  border: "3px solid rgba(255,255,255,0.8)",
-                  cursor: "pointer",
-                }}
-              >
-                <span>{label}</span>
-                <span style={{ fontSize: 9 }}>places</span>
+              <div style={{ position: "relative", width: CLUSTER_SIZE, height: CLUSTER_SIZE }}>
+                <div
+                  style={{
+                    width: CLUSTER_SIZE,
+                    height: CLUSTER_SIZE,
+                    background: bg,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: CLUSTER_SIZE * 0.46,
+                    boxShadow:
+                      "0 4px 14px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2)",
+                    border: "3px solid white",
+                    cursor: "pointer",
+                  }}
+                >
+                  {amenityIcon(item.dominantAmenity)}
+                </div>
+                <div
+                  style={{
+                    position: "absolute",
+                    top: -5,
+                    right: -5,
+                    background: "#ef4444",
+                    color: "white",
+                    borderRadius: "999px",
+                    minWidth: badgeSize,
+                    height: badgeSize,
+                    paddingInline: 4,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    fontFamily: "sans-serif",
+                    border: "2px solid white",
+                    boxShadow: "0 1px 5px rgba(0,0,0,0.3)",
+                    lineHeight: 1,
+                  }}
+                >
+                  {label}
+                </div>
               </div>
             </Marker>
           );
         }
 
         const pub = item.pub;
+        const isSelected = selectedMarker?.id === pub.id;
+        const bg = amenityColor(pub.amenity);
         return (
           <Marker
             key={pub.id}
             longitude={pub.lon}
             latitude={pub.lat}
-            anchor="bottom"
+            anchor="center"
             onClick={(e) => {
               e.originalEvent.stopPropagation();
               onMarkerClick(pub);
@@ -279,26 +327,24 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
           >
             <div
               style={{
-                background: "#6b7280",
-                color: "white",
-                borderRadius: "50% 50% 50% 0",
-                transform: "rotate(-45deg)",
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
+                background: bg,
+                borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontWeight: 700,
-                fontSize: 11,
-                fontFamily: "sans-serif",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
-                border: "2px solid white",
+                fontSize: 22,
+                boxShadow: isSelected
+                  ? `0 0 0 5px ${bg}66, 0 4px 16px ${bg}99, 0 2px 6px rgba(0,0,0,0.25)`
+                  : "0 3px 10px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15)",
+                border: "3px solid white",
                 cursor: "pointer",
+                transform: isSelected ? "scale(1.2)" : "scale(1)",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
               }}
             >
-              <span style={{ transform: "rotate(45deg)" }}>
-                {amenityIcon(pub.amenity)}
-              </span>
+              {amenityIcon(pub.amenity)}
             </div>
           </Marker>
         );

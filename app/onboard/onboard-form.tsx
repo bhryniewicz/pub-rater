@@ -31,12 +31,12 @@ export default function OnboardForm({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8 max-w-sm w-full">
+    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm p-8 max-w-sm w-full">
       <div className="text-3xl mb-4">🍺</div>
-      <h1 className="text-xl font-semibold text-zinc-900 mb-1">
+      <h1 className="text-xl font-semibold text-white mb-1">
         Welcome to Pub Rater
       </h1>
-      <p className="text-sm text-zinc-500 mb-8">
+      <p className="text-sm text-zinc-400 mb-8">
         What kind of places are you into?
       </p>
 
@@ -46,9 +46,9 @@ export default function OnboardForm({ userId }: { userId: string }) {
             type="checkbox"
             checked={preferences.pub_preference}
             onChange={() => toggle("pub_preference")}
-            className="w-4 h-4 rounded accent-zinc-900"
+            className="w-4 h-4 rounded accent-yellow-400"
           />
-          <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+          <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
             🍺 Pubs
           </span>
         </label>
@@ -58,9 +58,9 @@ export default function OnboardForm({ userId }: { userId: string }) {
             type="checkbox"
             checked={preferences.bar_preference}
             onChange={() => toggle("bar_preference")}
-            className="w-4 h-4 rounded accent-zinc-900"
+            className="w-4 h-4 rounded accent-yellow-400"
           />
-          <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+          <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
             🥂 Bars
           </span>
         </label>
@@ -70,14 +70,14 @@ export default function OnboardForm({ userId }: { userId: string }) {
         <button
           onClick={() => finish(preferences)}
           disabled={saving}
-          className="w-full text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
+          className="w-full text-sm font-medium text-zinc-950 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
         >
           {saving ? "Saving..." : "Done"}
         </button>
         <button
           onClick={() => finish({ bar_preference: false, pub_preference: false })}
           disabled={saving}
-          className="w-full text-sm font-medium text-zinc-500 hover:text-zinc-800 disabled:opacity-50 py-2 transition-colors"
+          className="w-full text-sm font-medium text-zinc-500 hover:text-zinc-300 disabled:opacity-50 py-2 transition-colors"
         >
           Skip for now
         </button>

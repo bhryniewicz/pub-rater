@@ -53,16 +53,16 @@ export default function SignupPage() {
 
   return (
     <main className="flex flex-col h-screen">
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-200 bg-white shrink-0">
+      <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-950 shrink-0">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl">🍺</span>
-          <h1 className="font-semibold text-zinc-900">Pub Rater</h1>
+          <h1 className="font-semibold text-white">Pub Rater</h1>
         </Link>
       </header>
 
-      <div className="flex flex-1 items-center justify-center bg-zinc-50">
-        <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-xl p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-zinc-900 mb-6">
+      <div className="flex flex-1 items-center justify-center bg-zinc-950">
+        <div className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-xl p-8 shadow-sm">
+          <h2 className="text-xl font-semibold text-white mb-6">
             Create account
           </h2>
 
@@ -103,9 +103,9 @@ export default function SignupPage() {
               {isSubmitting ? "Creating account…" : "Create account"}
             </Button>
 
-            <p className="text-center text-sm text-zinc-500">
+            <p className="text-center text-sm text-zinc-400">
               Already have an account?{" "}
-              <Link href="/login" className="text-zinc-900 font-medium hover:underline">
+              <Link href="/login" className="text-yellow-400 font-medium hover:underline">
                 Log in
               </Link>
             </p>

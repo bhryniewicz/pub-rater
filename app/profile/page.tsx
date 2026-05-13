@@ -14,13 +14,15 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
+  console.log("Profile data:", user);
+
   return (
-    <main className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
       <ProfileForm
         userId={user.id}
-        email={user.email ?? ""}
+        email={user.email!}
         createdAt={user.created_at}
-        preferences={profile?.preferences ?? { pub_preference: false, bar_preference: false }}
+        preferences={profile?.preferences}
       />
     </main>
   );

@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import PubList from "@/components/pub-list";
 import { AgeGate } from "@/components/age-gate";
 import { supabase, type MapMarker, type PubListItem } from "@/lib/supabase";
@@ -28,6 +27,7 @@ async function fetchAll<T>(table: string): Promise<T[]> {
     const { data, error } = await supabase
       .from(table)
       .select("*")
+      .order("id")
       .range(from, from + pageSize - 1);
     if (error || !data) break;
     all = all.concat(data as T[]);
@@ -45,9 +45,17 @@ export default function Home() {
   const [markersLoaded, setMarkersLoaded] = useState(false);
   const [listLoaded, setListLoaded] = useState(false);
   const [focusedMarker, setFocusedMarker] = useState<{
+    id: string;
     lat: number;
     lon: number;
   } | null>(null);
+  const [preferences, setPreferences] = useState<{
+    bar_preference: boolean;
+    pub_preference: boolean;
+  } | null>(null);
+  const [filterActive, setFilterActive] = useState(false);
+  const [likedPlaces, setLikedPlaces] = useState<string[]>([]);
+  const [likedFilterActive, setLikedFilterActive] = useState(false);
 
   useEffect(() => {
     fetchAll<MapMarker>("markers").then((data) => {
@@ -64,59 +72,47 @@ export default function Home() {
     if (userLoading || !user) return;
     supabase
       .from("profiles")
-      .select("is_onboarded")
+      .select("is_onboarded, preferences, liked_places")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
         if (data && !data.is_onboarded) router.push("/onboard");
+        if (data?.preferences) setPreferences(data.preferences);
+        if (data?.liked_places) setLikedPlaces(data.liked_places);
       });
   }, [user, userLoading, router]);
 
+  async function handleLikeToggle(markerId: string) {
+    if (!user) return;
+    const isLiked = likedPlaces.includes(markerId);
+    const updated = isLiked
+      ? likedPlaces.filter((id) => id !== markerId)
+      : [...likedPlaces, markerId];
+    setLikedPlaces(updated);
+    await supabase
+      .from("profiles")
+      .update({ liked_places: updated })
+      .eq("id", user.id);
+  }
+
+  const visibleMarkers = useMemo(() => {
+    if (likedFilterActive) {
+      const liked = new Set(likedPlaces);
+      return mapMarkers.filter((m) => liked.has(m.id));
+    }
+    if (!filterActive || !preferences) return mapMarkers;
+    const allowed = new Set<string>();
+    if (preferences.bar_preference) allowed.add("bar");
+    if (preferences.pub_preference) allowed.add("pub");
+    if (allowed.size === 0) return mapMarkers;
+    return mapMarkers.filter((m) => allowed.has(m.amenity));
+  }, [filterActive, likedFilterActive, likedPlaces, preferences, mapMarkers]);
+
   return (
-    <main className="flex flex-col h-screen">
+    <main className="flex flex-col flex-1 min-h-0">
       <AgeGate />
-      <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-200 bg-white shrink-0">
-        <span className="text-xl">🍺</span>
-        <h1 className="font-semibold text-zinc-900">Pub Rater</h1>
-        <div className="ml-auto flex items-center gap-2">
-          {user ? (
-            <>
-              <span className="text-sm text-zinc-500 hidden sm:block">
-                {user.email}
-              </span>
-              <Link
-                href="/profile"
-                className="text-sm font-medium text-zinc-700 hover:text-zinc-900 border border-zinc-300 rounded-lg px-3 py-1.5 hover:border-zinc-500 transition-colors"
-              >
-                Profile
-              </Link>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-sm font-medium text-zinc-700 hover:text-zinc-900 border border-zinc-300 rounded-lg px-3 py-1.5 hover:border-zinc-500 transition-colors"
-              >
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-zinc-700 hover:text-zinc-900 px-3 py-1.5 transition-colors"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-700 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                Sign up
-              </Link>
-            </>
-          )}
-        </div>
-      </header>
       {markersLoaded && (
-        <div className="flex gap-6 px-4 py-2 border-b border-zinc-200 bg-zinc-50 shrink-0 overflow-x-auto">
+        <div className="flex gap-6 px-4 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0 overflow-x-auto">
           {Object.entries(
             mapMarkers.reduce<Record<string, number>>((acc, p) => {
               acc[p.amenity] = (acc[p.amenity] ?? 0) + 1;
@@ -130,10 +126,10 @@ export default function Home() {
                 className="flex items-center gap-1.5 shrink-0 text-sm"
               >
                 {AMENITY_ICONS[type] && <span>{AMENITY_ICONS[type]}</span>}
-                <span className="font-medium text-zinc-700 capitalize">
+                <span className="font-medium text-zinc-200 capitalize">
                   {type}
                 </span>
-                <span className="bg-zinc-200 text-zinc-600 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                <span className="bg-zinc-700 text-zinc-300 text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {count}
                 </span>
               </div>
@@ -142,14 +138,23 @@ export default function Home() {
       )}
       <div className="flex-1 min-h-0 grid grid-cols-2 overflow-hidden">
         {!listLoaded ? (
-          <div className="flex items-center justify-center bg-zinc-50 border-r border-zinc-200 min-h-0">
-            <p className="text-zinc-400 text-sm">Loading...</p>
+          <div className="flex items-center justify-center bg-zinc-900 border-r border-zinc-800 min-h-0">
+            <p className="text-zinc-500 text-sm">Loading...</p>
           </div>
         ) : (
-          <PubList markers={pubList} onShowOnMap={setFocusedMarker} />
+          <PubList
+            markers={pubList}
+            onShowOnMap={setFocusedMarker}
+            filterActive={filterActive}
+            onFilterToggle={user ? () => setFilterActive((v) => !v) : undefined}
+            likedPlaces={likedPlaces}
+            onLikeToggle={user ? handleLikeToggle : undefined}
+            likedFilterActive={likedFilterActive}
+            onLikedFilterToggle={user ? () => setLikedFilterActive((v) => !v) : undefined}
+          />
         )}
         <div className="min-h-0 h-full overflow-hidden">
-          <Map markers={mapMarkers} focusedMarker={focusedMarker} />
+          <Map markers={visibleMarkers} focusedMarker={focusedMarker} />
         </div>
       </div>
     </main>

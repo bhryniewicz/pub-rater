@@ -17,7 +17,7 @@ export default async function OnboardPage() {
   if (profile?.is_onboarded) redirect("/");
 
   return (
-    <main className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
       <OnboardForm userId={user.id} />
     </main>
   );

@@ -43,39 +43,39 @@ export default function ProfileForm({ userId, email, createdAt, preferences: ini
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-8 max-w-sm w-full">
+    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm p-8 max-w-sm w-full">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Profile</h1>
+        <h1 className="text-xl font-semibold text-white">Profile</h1>
         <Link
           href="/"
-          className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors"
+          className="text-sm text-zinc-400 hover:text-white transition-colors"
         >
           Back
         </Link>
       </div>
 
       <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
           Account
         </h2>
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-xs text-zinc-400 mb-0.5">Email</p>
-            <p className="text-sm font-medium text-zinc-800">{email}</p>
+            <p className="text-xs text-zinc-500 mb-0.5">Email</p>
+            <p className="text-sm font-medium text-zinc-100">{email}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-400 mb-0.5">Member since</p>
-            <p className="text-sm font-medium text-zinc-800">{joinedAt}</p>
+            <p className="text-xs text-zinc-500 mb-0.5">Member since</p>
+            <p className="text-sm font-medium text-zinc-100">{joinedAt}</p>
           </div>
           <div>
-            <p className="text-xs text-zinc-400 mb-0.5">User ID</p>
-            <p className="text-xs font-mono text-zinc-500 break-all">{userId}</p>
+            <p className="text-xs text-zinc-500 mb-0.5">User ID</p>
+            <p className="text-xs font-mono text-zinc-400 break-all">{userId}</p>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">
           Preferences
         </h2>
         <div className="flex flex-col gap-3 mb-5">
@@ -84,9 +84,9 @@ export default function ProfileForm({ userId, email, createdAt, preferences: ini
               type="checkbox"
               checked={preferences.pub_preference}
               onChange={() => toggle("pub_preference")}
-              className="w-4 h-4 rounded accent-zinc-900"
+              className="w-4 h-4 rounded accent-yellow-400"
             />
-            <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+            <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
               🍺 Pubs
             </span>
           </label>
@@ -95,9 +95,9 @@ export default function ProfileForm({ userId, email, createdAt, preferences: ini
               type="checkbox"
               checked={preferences.bar_preference}
               onChange={() => toggle("bar_preference")}
-              className="w-4 h-4 rounded accent-zinc-900"
+              className="w-4 h-4 rounded accent-yellow-400"
             />
-            <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+            <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
               🥂 Bars
             </span>
           </label>
@@ -106,11 +106,20 @@ export default function ProfileForm({ userId, email, createdAt, preferences: ini
         <button
           onClick={save}
           disabled={saving}
-          className="w-full text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
+          className="w-full text-sm font-medium text-zinc-950 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
         >
           {saving ? "Saving..." : saved ? "Saved" : "Save preferences"}
         </button>
       </section>
+
+      <div className="mt-6 pt-6 border-t border-zinc-800">
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="w-full text-sm font-medium text-zinc-300 hover:text-white border border-zinc-700 hover:border-zinc-500 rounded-lg px-4 py-2.5 transition-colors"
+        >
+          Log out
+        </button>
+      </div>
     </div>
   );
 }
