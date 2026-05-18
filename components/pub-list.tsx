@@ -1,8 +1,69 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
 import { type PubListItem } from "@/lib/supabase";
+import { isOpenNow, getCloseTimeToday } from "@/lib/opening-hours";
 import Image from "next/image";
+import { IoLocationSharp } from "react-icons/io5";
+import { MdDoorFront } from "react-icons/md";
+import { LuMap } from "react-icons/lu";
+import { BsBookmark, BsBookmarkFill } from "react-icons/bs";
+import { Switch } from "@/components/ui/switch";
+
+function StarRating({
+  rating,
+  count,
+}: {
+  rating: number;
+  count: number | null;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex gap-[2px]">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const full = rating >= i + 1;
+          const half = !full && rating >= i + 0.5;
+          if (half) {
+            return (
+              <span
+                key={i}
+                className="relative inline-flex items-center justify-center w-[18px] h-[18px] rounded-sm overflow-hidden text-[11px] font-bold bg-zinc-700 text-zinc-500"
+              >
+                ★
+                <span
+                  className="absolute top-0 left-0 bottom-0 overflow-hidden"
+                  style={{ width: "50%" }}
+                >
+                  <span className="absolute top-0 left-0 w-[18px] h-[18px] bg-yellow-400 text-zinc-900 flex items-center justify-center text-[11px] font-bold">
+                    ★
+                  </span>
+                </span>
+              </span>
+            );
+          }
+          return (
+            <span
+              key={i}
+              className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-sm text-[11px] font-bold ${
+                full
+                  ? "bg-yellow-400 text-zinc-900"
+                  : "bg-zinc-700 text-zinc-500"
+              }`}
+            >
+              ★
+            </span>
+          );
+        })}
+      </div>
+      <span className="text-xs font-bold text-white">{rating.toFixed(1)}</span>
+      {count != null && (
+        <span className="text-xs text-zinc-500">({count} reviews)</span>
+      )}
+    </div>
+  );
+}
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",
@@ -15,115 +76,281 @@ const AMENITY_ICONS: Record<string, string> = {
 
 interface Props {
   markers: PubListItem[];
+  totalCount: number;
   onShowOnMap: (coords: { id: string; lat: number; lon: number }) => void;
-  filterActive?: boolean;
-  onFilterToggle?: () => void;
+  onShowMap?: () => void;
   likedPlaces?: string[];
   onLikeToggle?: (id: string) => void;
-  likedFilterActive?: boolean;
-  onLikedFilterToggle?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
+  openFilterActive?: boolean;
+  onOpenFilterToggle?: () => void;
 }
 
-export default function PubList({ markers, onShowOnMap, filterActive, onFilterToggle, likedPlaces = [], onLikeToggle, likedFilterActive, onLikedFilterToggle }: Props) {
+export default function PubList({
+  markers,
+  totalCount,
+  onShowOnMap,
+  onShowMap,
+  likedPlaces = [],
+  onLikeToggle,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  openFilterActive,
+  onOpenFilterToggle,
+}: Props) {
   const { user } = useUser();
-  const visibleMarkers = likedFilterActive
-    ? markers.filter((m) => likedPlaces.includes(m.id))
-    : markers;
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    if (!onLoadMore || !hasNextPage) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { root: listRef.current, threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+
   return (
-    <aside className="flex flex-col h-full overflow-hidden bg-zinc-900 border-r border-zinc-800">
-      <div className="px-4 py-3 border-b border-zinc-800 shrink-0 flex items-center justify-between">
-        <p className="text-sm text-zinc-400">{visibleMarkers.length} places</p>
+    <aside className="flex flex-col h-full overflow-hidden  border-r border-zinc-800">
+      <div className="md:pr-4 pt-2 pb-4 shrink-0 flex items-center justify-between">
+        <p className="text-sm text-zinc-400 font-extrabold">
+          Dostępne lokale - {totalCount} lokali
+        </p>
         <div className="flex items-center gap-2">
-          {onFilterToggle && (
-            <button
-              onClick={onFilterToggle}
-              className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
-                filterActive
-                  ? "bg-yellow-400 text-zinc-950 border-yellow-400"
-                  : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
+          {onOpenFilterToggle && (
+            <label
+              className={`flex items-center gap-1.5 cursor-pointer text-xs font-extrabold transition-colors ${
+                openFilterActive ? "text-yellow-400" : "text-zinc-400"
               }`}
             >
-              My spots
-            </button>
+              <MdDoorFront
+                className={`text-base transition-colors ${
+                  openFilterActive ? "text-yellow-400" : "text-zinc-500"
+                }`}
+              />
+
+              <Switch
+                checked={openFilterActive ?? false}
+                onCheckedChange={() => onOpenFilterToggle()}
+                className="data-unchecked:bg-zinc-600 data-checked:bg-yellow-400"
+              />
+            </label>
           )}
-          {onLikedFilterToggle && (
+          {onShowMap && (
             <button
-              onClick={onLikedFilterToggle}
-              className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
-                likedFilterActive
-                  ? "bg-rose-500 text-white border-rose-500"
-                  : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
-              }`}
+              onClick={onShowMap}
+              className="md:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border text-zinc-300 border-zinc-700 hover:border-zinc-500 transition-colors"
             >
-              Liked places
+              <LuMap size={13} />
+              Map
             </button>
           )}
         </div>
       </div>
-      <ul className="flex-1 overflow-y-auto divide-y divide-zinc-800">
-        {visibleMarkers.map((marker, index) => (
-          <li
-            key={marker.id}
-            className="flex gap-3 px-4 py-3 hover:bg-zinc-800/60 transition-colors"
-          >
-            {/* Thumbnail */}
-            <div className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
-              {marker.thumbnail ? (
-                <Image src={marker.thumbnail} alt={marker.name} fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl">
-                  {AMENITY_ICONS[marker.amenity] ?? "🍺"}
-                </div>
-              )}
-            </div>
 
-            {/* Content */}
-            <div className="flex flex-col justify-center gap-1 min-w-0">
-              <p className="font-black text-sm text-white leading-tight truncate">
-                <span className="font-normal text-zinc-500 mr-1">{index + 1}.</span>
-                {marker.name}
-              </p>
-
-              {(marker.address || marker.city) && (
-                <p className="flex items-center gap-1 text-xs text-zinc-400">
-                  <svg className="w-3 h-3 shrink-0 text-zinc-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                  </svg>
-                  {marker.address ?? marker.city}
-                </p>
-              )}
-
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-zinc-800 border border-zinc-700 text-zinc-400">
-                  {AMENITY_ICONS[marker.amenity] && (
-                    <span>{AMENITY_ICONS[marker.amenity]}</span>
+      <ul
+        ref={listRef}
+        className="flex-1 overflow-y-auto flex flex-col gap-3 md:pr-4 pt-0"
+      >
+        {markers.map((marker, index) => {
+          const openNow = marker.opening_hours
+            ? isOpenNow(marker.opening_hours)
+            : null;
+          const closeTime = marker.opening_hours
+            ? getCloseTimeToday(marker.opening_hours)
+            : null;
+          const isLiked = likedPlaces.includes(marker.id);
+          return (
+            <li
+              key={marker.id}
+              className="shrink-0 rounded-2xl overflow-hidden bg-zinc-800 border border-zinc-700/50 hover:shadow-lg hover:shadow-black/40 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:border md:border-zinc-700 md:overflow-visible"
+            >
+              {/* Image — full-width on mobile, fixed square on desktop */}
+              <div className="relative w-full h-52 bg-zinc-700 md:w-36 md:h-36 md:shrink-0 md:rounded-lg md:overflow-hidden">
+                <Link
+                  href={`/places/${marker.id}`}
+                  className="block w-full h-full"
+                >
+                  {marker.thumbnail ? (
+                    <Image
+                      src={marker.thumbnail}
+                      alt={marker.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl">
+                      {AMENITY_ICONS[marker.amenity] ?? "🍺"}
+                    </div>
                   )}
-                  {marker.amenity}
-                </span>
+                </Link>
 
+                {/* Open/Closed badge — bottom-left of image, mobile only */}
+                <div className="absolute bottom-3 left-3 md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${openNow === true ? "bg-green-400" : openNow === false ? "bg-red-400" : "bg-zinc-400"}`}
+                  />
+                  <span className="text-xs font-bold text-white">
+                    {openNow === true
+                      ? "Open"
+                      : openNow === false
+                        ? "Closed"
+                        : "No hours"}
+                  </span>
+                </div>
+
+                {/* Bookmark — top-right of image, mobile only */}
+                {onLikeToggle && (
+                  <button
+                    onClick={() => onLikeToggle(marker.id)}
+                    aria-label={isLiked ? "Unlike" : "Like"}
+                    className="md:hidden absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm"
+                  >
+                    {isLiked ? (
+                      <BsBookmarkFill className="w-5 h-5 text-yellow-400" />
+                    ) : (
+                      <BsBookmark className="w-5 h-5 text-white" />
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Content + mobile footer */}
+              <div className="flex flex-col flex-1 min-w-0">
+                <Link
+                  href={`/places/${marker.id}`}
+                  className="flex flex-col gap-2.5 p-4 md:p-0 md:py-1 flex-1 min-w-0"
+                >
+                  <p className="font-extrabold text-lg md:text-lg text-white leading-tight truncate">
+                    {marker.name}
+                  </p>
+
+                  {marker.app_rating ? (
+                    <StarRating
+                      rating={marker.app_rating}
+                      count={marker.app_review_count}
+                    />
+                  ) : null}
+
+                  <p className="flex items-center gap-1.5 text-xs text-white/80 font-extrabold">
+                    {(marker.address || marker.city) && (
+                      <>
+                        <IoLocationSharp className="w-3.5 h-3.5 shrink-0 text-zinc-400 -mr-1" />
+                        {marker.address ?? marker.city}
+                      </>
+                    )}
+                    <span className="hidden md:inline-flex items-center gap-1.5">
+                      {(marker.address || marker.city) && (
+                        <span className="text-white/80 text-[8px]">•</span>
+                      )}
+                      {openNow === true ? (
+                        <>
+                          <span className="font-extrabold text-green-400">
+                            Open
+                          </span>
+                          {closeTime && (
+                            <span className="text-white/80 font-extrabold">
+                              until {closeTime}
+                            </span>
+                          )}
+                        </>
+                      ) : openNow === false ? (
+                        <span className="font-extrabold text-red-400">
+                          Closed
+                        </span>
+                      ) : (
+                        <span className="font-extrabold text-zinc-500">
+                          No hours
+                        </span>
+                      )}
+                    </span>
+                  </p>
+
+                  <div className="flex items-center gap-1.5 flex-wrap md:mt-auto">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] md:text-[12px] bg-zinc-700 text-white font-bold">
+                      {marker.amenity.charAt(0).toUpperCase() +
+                        marker.amenity.slice(1)}
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Mobile: full-width Show on map button */}
+                {user && (
+                  <div className="px-4 pb-4 pt-1 md:hidden">
+                    <button
+                      onClick={() =>
+                        onShowOnMap({
+                          id: marker.id,
+                          lat: marker.lat,
+                          lon: marker.lon,
+                        })
+                      }
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-yellow-400 text-zinc-950 font-bold text-base hover:bg-yellow-300 transition-colors"
+                    >
+                      <LuMap size={18} />
+                      Show on map
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop: action buttons column (right side) */}
+              <div className="hidden md:flex flex-col justify-center gap-2 shrink-0">
                 {user && (
                   <button
                     onClick={() =>
-                      onShowOnMap({ id: marker.id, lat: marker.lat, lon: marker.lon })
+                      onShowOnMap({
+                        id: marker.id,
+                        lat: marker.lat,
+                        lon: marker.lon,
+                      })
                     }
-                    className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-400 text-zinc-950 hover:bg-yellow-300 transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-yellow-400 text-zinc-950 font-bold text-sm hover:bg-yellow-300 transition-colors"
                   >
+                    <LuMap size={14} />
                     Show on map
                   </button>
                 )}
                 {onLikeToggle && (
                   <button
                     onClick={() => onLikeToggle(marker.id)}
-                    className="text-lg leading-none transition-transform hover:scale-110"
-                    aria-label={likedPlaces.includes(marker.id) ? "Unlike" : "Like"}
+                    className="flex items-center justify-center"
+                    aria-label={isLiked ? "Unlike" : "Like"}
                   >
-                    {likedPlaces.includes(marker.id) ? "❤️" : "🤍"}
+                    {isLiked ? (
+                      <BsBookmarkFill className="w-4 h-4 text-yellow-400" />
+                    ) : (
+                      <BsBookmark className="w-4 h-4 text-zinc-400" />
+                    )}
                   </button>
                 )}
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
+
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="py-4 text-center">
+          {isFetchingNextPage && (
+            <p className="text-xs text-zinc-500">Loading more...</p>
+          )}
+          {!hasNextPage && markers.length > 0 && (
+            <p className="text-xs text-zinc-600">All places loaded</p>
+          )}
+        </div>
       </ul>
     </aside>
   );

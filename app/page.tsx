@@ -3,10 +3,23 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import PubList from "@/components/pub-list";
 import { AgeGate } from "@/components/age-gate";
-import { supabase, type MapMarker, type PubListItem } from "@/lib/supabase";
+import { supabase, fetchAllMarkers, type PubListItem } from "@/lib/supabase";
 import { useUser } from "@/hooks/use-user";
+import { useGeolocation } from "@/context/geolocation-context";
+import { useSearch } from "@/context/search-context";
+import { useFilters } from "@/context/filter-context";
+import { isOpenNow } from "@/lib/opening-hours";
+import { LuArrowLeft } from "react-icons/lu";
+
+const PAGE_SIZE = 20;
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",
@@ -17,102 +30,316 @@ const AMENITY_ICONS: Record<string, string> = {
   biergarten: "🌻",
 };
 
+const AMENITY_COLORS: Record<string, string> = {
+  pub: "#d97706",
+  bar: "#7c3aed",
+  restaurant: "#dc2626",
+  cafe: "#92400e",
+  nightclub: "#db2777",
+  biergarten: "#16a34a",
+};
+
 const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
-async function fetchAll<T>(table: string): Promise<T[]> {
-  const pageSize = 1000;
-  let all: T[] = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .order("id")
-      .range(from, from + pageSize - 1);
-    if (error || !data) break;
-    all = all.concat(data as T[]);
-    if (data.length < pageSize) break;
-    from += pageSize;
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+type PubListFilters = {
+  amenityFilter: string[];
+  likedPlaces: string[];
+  likedFilterActive: boolean;
+  openIds: string[] | null;
+  voivodeshipIds: string[] | null;
+  nearbyIds: string[] | null;
+  searchQuery: string;
+  searchSelectedId: string | null;
+};
+
+async function fetchPubListPage(
+  pageParam: number,
+  filters: PubListFilters,
+): Promise<{ items: PubListItem[]; nextPage: number | null }> {
+  let query = supabase
+    .from("pub_list")
+    .select("*")
+    .order("name")
+    .range(pageParam, pageParam + PAGE_SIZE - 1);
+
+  if (filters.searchSelectedId) {
+    query = query.eq("id", filters.searchSelectedId);
+  } else if (filters.searchQuery) {
+    query = query.ilike("name", `%${filters.searchQuery}%`);
+  } else if (filters.likedFilterActive) {
+    const ids = filters.voivodeshipIds
+      ? filters.likedPlaces.filter((id) => filters.voivodeshipIds!.includes(id))
+      : filters.likedPlaces;
+    if (ids.length === 0) return { items: [], nextPage: null };
+    query = query.in("id", ids);
+  } else {
+    if (filters.amenityFilter.length > 0) {
+      query = query.in("amenity", filters.amenityFilter);
+    }
+    if (filters.voivodeshipIds && filters.voivodeshipIds.length > 0) {
+      query = query.in("id", filters.voivodeshipIds);
+    }
   }
-  return all;
+
+  if (filters.openIds !== null) {
+    if (filters.openIds.length === 0) return { items: [], nextPage: null };
+    query = query.in("id", filters.openIds);
+  }
+
+  if (filters.nearbyIds !== null) {
+    if (filters.nearbyIds.length === 0) return { items: [], nextPage: null };
+    query = query.in("id", filters.nearbyIds);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return { items: [], nextPage: null };
+
+  return {
+    items: data as PubListItem[],
+    nextPage: data.length === PAGE_SIZE ? pageParam + PAGE_SIZE : null,
+  };
 }
 
 export default function Home() {
   const { user, loading: userLoading } = useUser();
+  const { coords: userLocation } = useGeolocation();
+  const { searchQuery, searchSelectedId } = useSearch();
+  const {
+    categoryFilter,
+    setCategoryFilter,
+    filterActive,
+    likedFilterActive,
+    setLikedFilterActive,
+    openFilterActive,
+    setOpenFilterActive,
+    voivodeshipFilter,
+    radiusFilter,
+  } = useFilters();
   const router = useRouter();
-  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
-  const [pubList, setPubList] = useState<PubListItem[]>([]);
-  const [markersLoaded, setMarkersLoaded] = useState(false);
-  const [listLoaded, setListLoaded] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
+
   const [focusedMarker, setFocusedMarker] = useState<{
     id: string;
     lat: number;
     lon: number;
   } | null>(null);
-  const [preferences, setPreferences] = useState<{
-    bar_preference: boolean;
-    pub_preference: boolean;
-  } | null>(null);
-  const [filterActive, setFilterActive] = useState(false);
-  const [likedPlaces, setLikedPlaces] = useState<string[]>([]);
-  const [likedFilterActive, setLikedFilterActive] = useState(false);
+
+  // Profile — includes preferences + liked_places
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_onboarded, preferences, liked_places")
+        .eq("id", user!.id)
+        .single();
+      return data;
+    },
+    enabled: !!user && !userLoading,
+  });
 
   useEffect(() => {
-    fetchAll<MapMarker>("markers").then((data) => {
-      setMapMarkers(data);
-      setMarkersLoaded(true);
-    });
-    fetchAll<PubListItem>("pub_list").then((data) => {
-      setPubList(data);
-      setListLoaded(true);
-    });
-  }, []);
+    if (profile && !profile.is_onboarded) router.push("/onboard");
+  }, [profile, router]);
 
+  const preferences = profile?.preferences ?? null;
+  const likedPlaces: string[] = profile?.liked_places ?? [];
+
+  // Build amenity filter list — category buttons take priority over preferences filter
+  const amenityFilter = useMemo(() => {
+    if (categoryFilter.length > 0) return categoryFilter;
+    if (!filterActive || !preferences) return [];
+    const allowed: string[] = [];
+    if (preferences.pub_preference) allowed.push("pub");
+    if (preferences.bar_preference) allowed.push("bar");
+    return allowed;
+  }, [categoryFilter, filterActive, preferences]);
+
+  // All markers for the map — fetched once, never paginated
+  const { data: mapMarkers = [], isSuccess: markersLoaded } = useQuery({
+    queryKey: ["markers"],
+    queryFn: fetchAllMarkers,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const openIds = useMemo(() => {
+    if (!openFilterActive || mapMarkers.length === 0) return null;
+    return mapMarkers
+      .filter((m) => m.opening_hours != null && isOpenNow(m.opening_hours))
+      .map((m) => m.id);
+  }, [openFilterActive, mapMarkers]);
+
+  const nearbyIds = useMemo(() => {
+    if (radiusFilter === null || !userLocation || mapMarkers.length === 0)
+      return null;
+    return mapMarkers
+      .filter(
+        (m) =>
+          haversineKm(userLocation.lat, userLocation.lon, m.lat, m.lon) <=
+          radiusFilter,
+      )
+      .map((m) => m.id);
+  }, [radiusFilter, userLocation, mapMarkers]);
+
+  // When a single place is selected from search, focus it on the map
   useEffect(() => {
-    if (userLoading || !user) return;
-    supabase
-      .from("profiles")
-      .select("is_onboarded, preferences, liked_places")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data && !data.is_onboarded) router.push("/onboard");
-        if (data?.preferences) setPreferences(data.preferences);
-        if (data?.liked_places) setLikedPlaces(data.liked_places);
-      });
-  }, [user, userLoading, router]);
+    if (!searchSelectedId) return;
+    const marker = mapMarkers.find((m) => m.id === searchSelectedId);
+    if (marker)
+      setFocusedMarker({ id: marker.id, lat: marker.lat, lon: marker.lon });
+  }, [searchSelectedId, mapMarkers]);
 
-  async function handleLikeToggle(markerId: string) {
-    if (!user) return;
-    const isLiked = likedPlaces.includes(markerId);
-    const updated = isLiked
-      ? likedPlaces.filter((id) => id !== markerId)
-      : [...likedPlaces, markerId];
-    setLikedPlaces(updated);
-    await supabase
-      .from("profiles")
-      .update({ liked_places: updated })
-      .eq("id", user.id);
-  }
+  // Pub list — paginated with filters as part of the key
+  const {
+    data: pubListPages,
+    isLoading: listLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      "pub_list",
+      amenityFilter,
+      likedFilterActive,
+      likedFilterActive ? likedPlaces : [],
+      openIds,
+      voivodeshipFilter,
+      nearbyIds,
+      searchQuery,
+      searchSelectedId,
+    ],
+    queryFn: ({ pageParam }) =>
+      fetchPubListPage(pageParam as number, {
+        amenityFilter,
+        likedPlaces,
+        likedFilterActive,
+        openIds,
+        voivodeshipIds,
+        nearbyIds,
+        searchQuery,
+        searchSelectedId,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextPage,
+    staleTime: 60 * 1000,
+  });
+
+  const pubList = useMemo(
+    () => pubListPages?.pages.flatMap((p) => p.items) ?? [],
+    [pubListPages],
+  );
+
+  const voivodeshipIds = useMemo(() => {
+    if (!voivodeshipFilter) return null;
+    return mapMarkers
+      .filter((m) => m.voivodeship === voivodeshipFilter)
+      .map((m) => m.id);
+  }, [voivodeshipFilter, mapMarkers]);
 
   const visibleMarkers = useMemo(() => {
+    // Search takes priority over all other filters
+    if (searchSelectedId) {
+      return mapMarkers.filter((m) => m.id === searchSelectedId);
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return mapMarkers.filter((m) => m.name.toLowerCase().includes(q));
+    }
+
+    let markers = mapMarkers;
+    if (voivodeshipFilter) {
+      const ids = new Set(voivodeshipIds ?? []);
+      markers = markers.filter((m) => ids.has(m.id));
+    }
     if (likedFilterActive) {
       const liked = new Set(likedPlaces);
-      return mapMarkers.filter((m) => liked.has(m.id));
+      markers = markers.filter((m) => liked.has(m.id));
+    } else if (amenityFilter.length > 0) {
+      const allowed = new Set(amenityFilter);
+      markers = markers.filter((m) => allowed.has(m.amenity));
     }
-    if (!filterActive || !preferences) return mapMarkers;
-    const allowed = new Set<string>();
-    if (preferences.bar_preference) allowed.add("bar");
-    if (preferences.pub_preference) allowed.add("pub");
-    if (allowed.size === 0) return mapMarkers;
-    return mapMarkers.filter((m) => allowed.has(m.amenity));
-  }, [filterActive, likedFilterActive, likedPlaces, preferences, mapMarkers]);
+    if (openIds !== null) {
+      const open = new Set(openIds);
+      markers = markers.filter((m) => open.has(m.id));
+    }
+    if (nearbyIds !== null) {
+      const nearby = new Set(nearbyIds);
+      markers = markers.filter((m) => nearby.has(m.id));
+    }
+    return markers;
+  }, [
+    filterActive,
+    likedFilterActive,
+    likedPlaces,
+    amenityFilter,
+    categoryFilter,
+    openIds,
+    nearbyIds,
+    mapMarkers,
+    voivodeshipFilter,
+    voivodeshipIds,
+    searchQuery,
+    searchSelectedId,
+  ]);
+
+  const likeMutation = useMutation({
+    mutationFn: async (markerId: string) => {
+      const isLiked = likedPlaces.includes(markerId);
+      const updated = isLiked
+        ? likedPlaces.filter((id) => id !== markerId)
+        : [...likedPlaces, markerId];
+      await supabase
+        .from("profiles")
+        .update({ liked_places: updated })
+        .eq("id", user!.id);
+      return updated;
+    },
+    onMutate: async (markerId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["profile", user?.id] });
+      const previous = queryClient.getQueryData(["profile", user?.id]);
+      queryClient.setQueryData(["profile", user?.id], (old: typeof profile) => {
+        if (!old) return old;
+        const isLiked = (old.liked_places ?? []).includes(markerId);
+        return {
+          ...old,
+          liked_places: isLiked
+            ? old.liked_places.filter((id: string) => id !== markerId)
+            : [...(old.liked_places ?? []), markerId],
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _markerId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["profile", user?.id], context.previous);
+      }
+    },
+  });
 
   return (
     <main className="flex flex-col flex-1 min-h-0">
       <AgeGate />
       {markersLoaded && (
-        <div className="flex gap-6 px-4 py-2 border-b border-zinc-800 bg-zinc-900 shrink-0 overflow-x-auto">
+        <div className="hidden md:flex gap-4 pl-12 py-2 bg-zinc-900 shrink-0 overflow-x-auto">
           {Object.entries(
             mapMarkers.reduce<Record<string, number>>((acc, p) => {
               acc[p.amenity] = (acc[p.amenity] ?? 0) + 1;
@@ -120,41 +347,118 @@ export default function Home() {
             }, {}),
           )
             .sort((a, b) => b[1] - a[1])
-            .map(([type, count]) => (
+            .map(([type, count]) => {
+              const active = categoryFilter.includes(type);
+              return (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setLikedFilterActive(false);
+                    setCategoryFilter((prev) =>
+                      prev.includes(type) ? [] : [type],
+                    );
+                  }}
+                  className="flex flex-col items-center gap-1 shrink-0"
+                >
+                  <div
+                    style={
+                      active
+                        ? { background: AMENITY_COLORS[type] ?? "#4b5563" }
+                        : undefined
+                    }
+                    className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 text-white transition-all ${
+                      active
+                        ? "border-transparent"
+                        : "bg-zinc-700 border-zinc-600 hover:bg-zinc-600"
+                    }`}
+                  >
+                    <span className="text-base leading-none">
+                      {AMENITY_ICONS[type] ?? "📍"}
+                    </span>
+                    <span className="absolute -top-1.5 -right-4 bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none">
+                      {count}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-semibold capitalize leading-none text-zinc-400">
+                    {type}
+                  </span>
+                </button>
+              );
+            })}
+          {user && (
+            <button
+              onClick={() => {
+                setCategoryFilter([]);
+                setLikedFilterActive((prev) => !prev);
+              }}
+              className="flex flex-col items-center gap-1 shrink-0"
+            >
               <div
-                key={type}
-                className="flex items-center gap-1.5 shrink-0 text-sm"
+                style={
+                  likedFilterActive ? { background: "#db2777" } : undefined
+                }
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 text-white transition-all ${
+                  likedFilterActive
+                    ? "border-transparent"
+                    : "bg-zinc-700 border-zinc-600 hover:bg-zinc-600"
+                }`}
               >
-                {AMENITY_ICONS[type] && <span>{AMENITY_ICONS[type]}</span>}
-                <span className="font-medium text-zinc-200 capitalize">
-                  {type}
-                </span>
-                <span className="bg-zinc-700 text-zinc-300 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {count}
+                <span className="text-base leading-none">❤️</span>
+                <span className="absolute -top-1.5 -right-4 bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none">
+                  {likedPlaces.length}
                 </span>
               </div>
-            ))}
+              <span className="text-[10px] font-semibold capitalize leading-none text-zinc-400">
+                liked
+              </span>
+            </button>
+          )}
         </div>
       )}
-      <div className="flex-1 min-h-0 grid grid-cols-2 overflow-hidden">
-        {!listLoaded ? (
-          <div className="flex items-center justify-center bg-zinc-900 border-r border-zinc-800 min-h-0">
-            <p className="text-zinc-500 text-sm">Loading...</p>
-          </div>
-        ) : (
-          <PubList
-            markers={pubList}
-            onShowOnMap={setFocusedMarker}
-            filterActive={filterActive}
-            onFilterToggle={user ? () => setFilterActive((v) => !v) : undefined}
-            likedPlaces={likedPlaces}
-            onLikeToggle={user ? handleLikeToggle : undefined}
-            likedFilterActive={likedFilterActive}
-            onLikedFilterToggle={user ? () => setLikedFilterActive((v) => !v) : undefined}
+      <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-2 overflow-hidden">
+        <div
+          className={`min-h-0 px-4 md:pl-12 md:pr-0 overflow-hidden bg-zinc-900 ${mobileView === "map" ? "hidden md:block" : "flex-1 md:flex-none"}`}
+        >
+          {listLoading ? (
+            <div className="flex items-center justify-center h-full bg-zinc-900 border-r border-zinc-800">
+              <p className="text-zinc-500 text-sm">Loading...</p>
+            </div>
+          ) : (
+            <PubList
+              markers={pubList}
+              totalCount={mapMarkers.length}
+              onShowOnMap={(coords) => {
+                setFocusedMarker(coords);
+                setMobileView("map");
+              }}
+              onShowMap={() => setMobileView("map")}
+              likedPlaces={likedPlaces}
+              onLikeToggle={user ? (id) => likeMutation.mutate(id) : undefined}
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+              openFilterActive={openFilterActive}
+              onOpenFilterToggle={() => setOpenFilterActive((prev) => !prev)}
+            />
+          )}
+        </div>
+        <div
+          className={`min-h-0 relative overflow-hidden ${mobileView === "list" ? "hidden md:block" : "flex-1 md:flex-none"}`}
+        >
+          {/* Mobile: floating back to list button */}
+          <button
+            onClick={() => setMobileView("list")}
+            className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-zinc-900/90 backdrop-blur-sm text-white rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
+          >
+            <LuArrowLeft size={16} />
+            List view
+          </button>
+          <Map
+            markers={visibleMarkers}
+            focusedMarker={focusedMarker}
+            userLocation={userLocation}
+            active={mobileView === "map"}
           />
-        )}
-        <div className="min-h-0 h-full overflow-hidden">
-          <Map markers={visibleMarkers} focusedMarker={focusedMarker} />
         </div>
       </div>
     </main>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 type Preferences = {
@@ -15,16 +16,16 @@ export default function OnboardForm({ userId }: { userId: string }) {
     bar_preference: false,
     pub_preference: false,
   });
-  const [saving, setSaving] = useState(false);
 
-  async function finish(prefs: Preferences) {
-    setSaving(true);
-    await supabase
-      .from("profiles")
-      .update({ is_onboarded: true, preferences: prefs })
-      .eq("id", userId);
-    router.push("/");
-  }
+  const finishMutation = useMutation({
+    mutationFn: async (prefs: Preferences) => {
+      await supabase
+        .from("profiles")
+        .update({ is_onboarded: true, preferences: prefs })
+        .eq("id", userId);
+    },
+    onSuccess: () => router.push("/"),
+  });
 
   function toggle(key: keyof Preferences) {
     setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -68,15 +69,15 @@ export default function OnboardForm({ userId }: { userId: string }) {
 
       <div className="flex flex-col gap-2">
         <button
-          onClick={() => finish(preferences)}
-          disabled={saving}
+          onClick={() => finishMutation.mutate(preferences)}
+          disabled={finishMutation.isPending}
           className="w-full text-sm font-medium text-zinc-950 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
         >
-          {saving ? "Saving..." : "Done"}
+          {finishMutation.isPending ? "Saving..." : "Done"}
         </button>
         <button
-          onClick={() => finish({ bar_preference: false, pub_preference: false })}
-          disabled={saving}
+          onClick={() => finishMutation.mutate({ bar_preference: false, pub_preference: false })}
+          disabled={finishMutation.isPending}
           className="w-full text-sm font-medium text-zinc-500 hover:text-zinc-300 disabled:opacity-50 py-2 transition-colors"
         >
           Skip for now

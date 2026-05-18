@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/dal";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import ProfileForm from "./profile-form";
+import { ProfileForm } from "./profile-form";
 
 export default async function ProfilePage() {
   const user = await getUser();
@@ -17,13 +17,11 @@ export default async function ProfilePage() {
   console.log("Profile data:", user);
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-      <ProfileForm
-        userId={user.id}
-        email={user.email!}
-        createdAt={user.created_at}
-        preferences={profile?.preferences}
-      />
-    </main>
+    <ProfileForm
+      userId={user.id}
+      email={user.email!}
+      createdAt={user.created_at}
+      preferences={profile?.preferences}
+    />
   );
 }

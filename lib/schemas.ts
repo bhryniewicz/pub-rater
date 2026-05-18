@@ -1,5 +1,72 @@
 import { z } from 'zod'
 
+// ── Auth ────────────────────────────────────────────────────────────────────
+
+const strongPassword = z
+  .string()
+  .min(8, 'Min 8 characters')
+  .regex(/[A-Z]/, 'Must contain an uppercase letter')
+  .regex(/[a-z]/, 'Must contain a lowercase letter')
+  .regex(/[0-9]/, 'Must contain a number')
+  .regex(/[^A-Za-z0-9]/, 'Must contain a special character')
+
+export const LoginSchema = z.object({
+  email: z.string().trim().email('Enter a valid email'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+export const SignupStep1Schema = z.object({
+  email: z.string().trim().email('Enter a valid email'),
+  password: strongPassword,
+})
+
+export const SignupStep2Schema = z.object({
+  display_name: z
+    .string()
+    .trim()
+    .min(2, 'Min 2 characters')
+    .max(50, 'Max 50 characters'),
+  birth_date: z.string().refine((val) => {
+    if (!val) return false
+    const born = new Date(val)
+    if (isNaN(born.getTime())) return false
+    const today = new Date()
+    const threshold = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate(),
+    )
+    return born <= threshold
+  }, 'Must be 18 or older'),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (val) => val === '' || /^\+?[1-9]\d{6,14}$/.test(val),
+      'Enter a valid phone number',
+    )
+    .optional(),
+})
+
+export type LoginValues = z.infer<typeof LoginSchema>
+export type SignupStep1Values = z.infer<typeof SignupStep1Schema>
+export type SignupStep2Values = z.infer<typeof SignupStep2Schema>
+
+const DayHoursSchema = z.object({
+  open: z.string(),
+  close: z.string().nullable(),
+}).nullable()
+
+export const OpeningHoursSchema = z.object({
+  mo: DayHoursSchema,
+  tu: DayHoursSchema,
+  we: DayHoursSchema,
+  th: DayHoursSchema,
+  fr: DayHoursSchema,
+  sa: DayHoursSchema,
+  su: DayHoursSchema,
+})
+
 // Matches the markers table — lightweight, used for map pins and counters
 export const MapMarkerSchema = z.object({
   id: z.string(),
@@ -8,6 +75,8 @@ export const MapMarkerSchema = z.object({
   lat: z.number(),
   lon: z.number(),
   outdoor_seating: z.boolean().nullable(),
+  voivodeship: z.string().nullable(),
+  opening_hours: OpeningHoursSchema.nullable(),
 })
 
 // Matches the pub_list view (markers JOIN places) — used for the sidebar list
@@ -20,6 +89,11 @@ export const PubListItemSchema = z.object({
   city: z.string().nullable(),
   address: z.string().nullable(),
   thumbnail: z.string().nullable(),
+  google_rating: z.number().nullable(),
+  google_review_count: z.number().nullable(),
+  app_rating: z.number().nullable(),
+  app_review_count: z.number().nullable(),
+  opening_hours: OpeningHoursSchema.nullable(),
 })
 
 // Matches the places table — full details, fetched on demand
@@ -29,16 +103,96 @@ export const PlaceSchema = z.object({
   address: z.string().nullable(),
   phone: z.string().nullable(),
   website: z.string().nullable(),
-  opening_hours: z.string().nullable(),
+  opening_hours: OpeningHoursSchema.nullable(),
   city: z.string().nullable(),
   google_place_id: z.string().nullable(),
   google_rating: z.number().nullable(),
   google_review_count: z.number().nullable(),
-  app_rating: z.number(),
-  app_review_count: z.number(),
+  app_rating: z.number().nullable(),
+  app_review_count: z.number().nullable(),
   thumbnail: z.string().nullable(),
+  app_reviews: z.array(z.string()).nullable(),
 })
 
+// Matches the reviews table
+export const ReviewSchema = z.object({
+  id: z.string(),
+  marker_id: z.string(),
+  user_id: z.string().nullable(),
+  user_email: z.string().nullable(),
+  rating: z.number().nullable(),
+  comment: z.string().nullable(),
+  created_at: z.string().nullable(),
+})
+
+// Matches the profiles table — created on signup, updated during onboarding
+export const ProfilePreferencesSchema = z.object({
+  bar_preference: z.boolean(),
+  pub_preference: z.boolean(),
+})
+
+export const ProfileSchema = z.object({
+  id: z.string(),
+  is_onboarded: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  preferences: ProfilePreferencesSchema,
+  age: z.number(),
+  liked_places: z.array(z.string()),
+  role: z.enum(['user', 'admin']),
+})
+
+// Add place form
+const AMENITIES = ['pub', 'bar', 'restaurant', 'cafe', 'nightclub', 'biergarten'] as const
+
+export const AddPlaceSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Max 200 characters'),
+  amenity: z.enum(AMENITIES, { errorMap: () => ({ message: 'Category is required' }) }),
+  address: z.string().trim().optional(),
+  lat: z.number({ required_error: 'Pick a location on the map', invalid_type_error: 'Pick a location on the map' }),
+  lon: z.number({ required_error: 'Pick a location on the map', invalid_type_error: 'Pick a location on the map' }),
+})
+
+export type AddPlaceValues = z.infer<typeof AddPlaceSchema>
+export type Amenity = typeof AMENITIES[number]
+
+// Review submission form
+export const ReviewFormSchema = z.object({
+  comment: z
+    .string()
+    .trim()
+    .min(1, 'Comment is required')
+    .max(1000, 'Max 1000 characters'),
+  rating: z
+    .number({ invalid_type_error: 'Please select a rating' })
+    .min(1, 'Please select a rating')
+    .max(5),
+})
+
+export type OpeningHours = z.infer<typeof OpeningHoursSchema>
 export type MapMarker = z.infer<typeof MapMarkerSchema>
 export type PubListItem = z.infer<typeof PubListItemSchema>
 export type Place = z.infer<typeof PlaceSchema>
+export type Review = z.infer<typeof ReviewSchema>
+export type ProfilePreferences = z.infer<typeof ProfilePreferencesSchema>
+export type Profile = z.infer<typeof ProfileSchema>
+export type ReviewFormValues = z.infer<typeof ReviewFormSchema>
+
+// Location request (submitted by users, reviewed by admin)
+export const LocationRequestStatus = z.enum(['pending', 'approved', 'rejected'])
+
+export const LocationRequestSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amenity: z.string(),
+  address: z.string().nullable(),
+  lat: z.number(),
+  lon: z.number(),
+  opening_hours: OpeningHoursSchema.nullable(),
+  status: LocationRequestStatus,
+  requested_by: z.string().nullable(),
+  created_at: z.string(),
+})
+
+export type LocationRequest = z.infer<typeof LocationRequestSchema>
+export type LocationRequestStatusType = z.infer<typeof LocationRequestStatus>

@@ -4,17 +4,30 @@ import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-export function useUser(): { user: User | null; loading: boolean } {
+export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean } {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  async function fetchRole(userId: string) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+    setIsAdmin(data?.role === 'admin')
+  }
 
   useEffect(() => {
     // Read the session from cookie storage (not in-memory cache) so we pick up
     // any tokens the server refreshed via the proxy since the last page load.
     function syncFromStorage() {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null)
+        const u = session?.user ?? null
+        setUser(u)
         setLoading(false)
+        if (u) fetchRole(u.id)
+        else setIsAdmin(false)
       })
     }
 
@@ -28,8 +41,11 @@ export function useUser(): { user: User | null; loading: boolean } {
     // Keep in sync with auth state changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null)
+        const u = session?.user ?? null
+        setUser(u)
         setLoading(false)
+        if (u) fetchRole(u.id)
+        else setIsAdmin(false)
       }
     )
 
@@ -39,5 +55,5 @@ export function useUser(): { user: User | null; loading: boolean } {
     }
   }, [])
 
-  return { user, loading }
+  return { user, loading, isAdmin }
 }

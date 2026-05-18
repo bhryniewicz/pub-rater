@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Lato } from "next/font/google";
 import { Navbar } from "@/components/navbar";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const lato = Lato({
@@ -30,8 +31,10 @@ export default function RootLayout({
       className={`${lato.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full flex flex-col">
-        <Navbar />
-        {children}
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   );

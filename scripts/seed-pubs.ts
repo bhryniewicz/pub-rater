@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { parseOsmOpeningHours } from "../lib/opening-hours";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -6,22 +7,22 @@ const supabase = createClient(
 );
 
 const CITIES = [
-  { name: "Warszawa", bbox: [52.0978, 20.8517, 52.3682, 21.2712] },
-  { name: "Kraków", bbox: [49.9677, 19.7922, 50.1261, 20.2173] },
-  { name: "Katowice", bbox: [50.1301, 18.8915, 50.2977, 19.1244] },
-  { name: "Poznań", bbox: [52.2919, 16.7316, 52.5093, 17.0717] },
-  { name: "Wrocław", bbox: [51.0427, 16.8073, 51.2101, 17.1762] },
-  { name: "Łódź", bbox: [51.6861, 19.3209, 51.8599, 19.6399] },
-  { name: "Gdańsk", bbox: [54.2749, 18.4295, 54.5827, 19.0703] },
-  { name: "Lublin", bbox: [51.1398, 22.4538, 51.2966, 22.6735] },
-  { name: "Rzeszów", bbox: [49.9326, 21.8587, 50.0942, 22.0941] },
-  { name: "Bydgoszcz", bbox: [53.0501, 17.8742, 53.2093, 18.2026] },
-  { name: "Olsztyn", bbox: [53.7242, 20.3665, 53.829, 20.5666] },
-  { name: "Szczecin", bbox: [53.3217, 14.4438, 53.5377, 14.8054] },
-  { name: "Kielce", bbox: [50.7933, 20.5105, 50.9151, 20.7206] },
-  { name: "Białystok", bbox: [53.0666, 23.0658, 53.1886, 23.2472] },
-  { name: "Zielona Góra", bbox: [51.8201, 15.4059, 52.0351, 15.6524] },
-  { name: "Opole", bbox: [50.5876, 17.7799, 50.77, 18.0327] },
+  { name: "Warszawa",     voivodeship: "Mazowieckie",           bbox: [52.0978, 20.8517, 52.3682, 21.2712] },
+  { name: "Kraków",       voivodeship: "Malopolskie",           bbox: [49.9677, 19.7922, 50.1261, 20.2173] },
+  { name: "Katowice",     voivodeship: "Slaskie",               bbox: [50.1301, 18.8915, 50.2977, 19.1244] },
+  { name: "Poznań",       voivodeship: "Wielkopolskie",         bbox: [52.2919, 16.7316, 52.5093, 17.0717] },
+  { name: "Wrocław",      voivodeship: "Dolnoslaskie",          bbox: [51.0427, 16.8073, 51.2101, 17.1762] },
+  { name: "Łódź",         voivodeship: "Lodzkie",               bbox: [51.6861, 19.3209, 51.8599, 19.6399] },
+  { name: "Gdańsk",       voivodeship: "Pomorskie",             bbox: [54.2749, 18.4295, 54.5827, 19.0703] },
+  { name: "Lublin",       voivodeship: "Lubelskie",             bbox: [51.1398, 22.4538, 51.2966, 22.6735] },
+  { name: "Rzeszów",      voivodeship: "Podkarpackie",          bbox: [49.9326, 21.8587, 50.0942, 22.0941] },
+  { name: "Bydgoszcz",    voivodeship: "Kujawsko-Pomorskie",    bbox: [53.0501, 17.8742, 53.2093, 18.2026] },
+  { name: "Olsztyn",      voivodeship: "Warminsko-Mazurskie",   bbox: [53.7242, 20.3665, 53.829, 20.5666] },
+  { name: "Szczecin",     voivodeship: "Zachodniopomorskie",    bbox: [53.3217, 14.4438, 53.5377, 14.8054] },
+  { name: "Kielce",       voivodeship: "Swietokrzyskie",        bbox: [50.7933, 20.5105, 50.9151, 20.7206] },
+  { name: "Białystok",    voivodeship: "Podlaskie",             bbox: [53.0666, 23.0658, 53.1886, 23.2472] },
+  { name: "Zielona Góra", voivodeship: "Lubuskie",              bbox: [51.8201, 15.4059, 52.0351, 15.6524] },
+  { name: "Opole",        voivodeship: "Opolskie",              bbox: [50.5876, 17.7799, 50.77, 18.0327] },
 ];
 
 type OverpassElement = {
@@ -145,6 +146,7 @@ async function seed() {
             : tags.outdoor_seating === "no"
               ? false
               : null,
+        voivodeship: city.voivodeship,
       };
     });
 
@@ -171,11 +173,11 @@ async function seed() {
           address: buildAddress(tags),
           phone: tags.phone ?? tags["contact:phone"] ?? null,
           website: tags.website ?? tags["contact:website"] ?? null,
-          opening_hours: tags.opening_hours ?? null,
+          opening_hours: parseOsmOpeningHours(tags.opening_hours ?? null),
           city: city.name,
         };
       })
-      .filter(Boolean);
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
     const { error: placeError } = await supabase
       .from("places")
