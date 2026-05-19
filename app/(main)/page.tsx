@@ -76,6 +76,7 @@ async function fetchPubListPage(
     .from("pub_list")
     .select("*")
     .order("name")
+    .order("id")
     .range(pageParam, pageParam + PAGE_SIZE - 1);
 
   if (filters.searchSelectedId) {
@@ -143,7 +144,26 @@ export default function Home() {
     lon: number;
   } | null>(null);
 
-  // Profile — includes preferences + liked_places
+  const [localLikedPlaces, setLocalLikedPlaces] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("liked_places");
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  function toggleLocalLike(markerId: string) {
+    setLocalLikedPlaces((prev) => {
+      const updated = prev.includes(markerId)
+        ? prev.filter((id) => id !== markerId)
+        : [...prev, markerId];
+      localStorage.setItem("liked_places", JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -162,9 +182,10 @@ export default function Home() {
   }, [profile, router]);
 
   const preferences = profile?.preferences ?? null;
-  const likedPlaces: string[] = profile?.liked_places ?? [];
+  const likedPlaces: string[] = user
+    ? (profile?.liked_places ?? [])
+    : localLikedPlaces;
 
-  // Build amenity filter list — category buttons take priority over preferences filter
   const amenityFilter = useMemo(() => {
     if (categoryFilter.length > 0) return categoryFilter;
     if (!filterActive || !preferences) return [];
@@ -174,7 +195,6 @@ export default function Home() {
     return allowed;
   }, [categoryFilter, filterActive, preferences]);
 
-  // All markers for the map — fetched once, never paginated
   const { data: mapMarkers = [], isSuccess: markersLoaded } = useQuery({
     queryKey: ["markers"],
     queryFn: fetchAllMarkers,
@@ -200,7 +220,6 @@ export default function Home() {
       .map((m) => m.id);
   }, [radiusFilter, userLocation, mapMarkers]);
 
-  // When a single place is selected from search, focus it on the map
   useEffect(() => {
     if (!searchSelectedId) return;
     const marker = mapMarkers.find((m) => m.id === searchSelectedId);
@@ -208,7 +227,6 @@ export default function Home() {
       setFocusedMarker({ id: marker.id, lat: marker.lat, lon: marker.lon });
   }, [searchSelectedId, mapMarkers]);
 
-  // Pub list — paginated with filters as part of the key
   const {
     data: pubListPages,
     isLoading: listLoading,
@@ -256,7 +274,6 @@ export default function Home() {
   }, [voivodeshipFilter, mapMarkers]);
 
   const visibleMarkers = useMemo(() => {
-    // Search takes priority over all other filters
     if (searchSelectedId) {
       return mapMarkers.filter((m) => m.id === searchSelectedId);
     }
@@ -339,7 +356,7 @@ export default function Home() {
     <main className="flex flex-col flex-1 min-h-0">
       <AgeGate />
       {markersLoaded && (
-        <div className="hidden md:flex gap-4 pl-12 py-2 bg-zinc-900 shrink-0 overflow-x-auto">
+        <div className="hidden md:flex gap-4 pl-12 py-2  shrink-0 overflow-x-auto">
           {Object.entries(
             mapMarkers.reduce<Record<string, number>>((acc, p) => {
               acc[p.amenity] = (acc[p.amenity] ?? 0) + 1;
@@ -366,62 +383,60 @@ export default function Home() {
                         ? { background: AMENITY_COLORS[type] ?? "#4b5563" }
                         : undefined
                     }
-                    className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 text-white transition-all ${
+                    className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all ${
                       active
-                        ? "border-transparent"
-                        : "bg-zinc-700 border-zinc-600 hover:bg-zinc-600"
+                        ? "border-transparent text-white"
+                        : "bg-secondary border-border dark:border-transparent hover:bg-secondary/80 text-foreground"
                     }`}
                   >
                     <span className="text-base leading-none">
                       {AMENITY_ICONS[type] ?? "📍"}
                     </span>
-                    <span className="absolute -top-1.5 -right-4 bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none">
+                    <span className="absolute -top-1.5 -right-4 text-muted-foreground text-[10px] font-black px-1.5 py-0.5 leading-none bg-border dark:bg-muted rounded-full">
                       {count}
                     </span>
                   </div>
-                  <span className="text-[10px] font-semibold capitalize leading-none text-zinc-400">
+                  <span className="text-[10px] font-semibold capitalize leading-none text-muted-foreground">
                     {type}
                   </span>
                 </button>
               );
             })}
-          {user && (
-            <button
-              onClick={() => {
-                setCategoryFilter([]);
-                setLikedFilterActive((prev) => !prev);
-              }}
-              className="flex flex-col items-center gap-1 shrink-0"
+          <button
+            onClick={() => {
+              setCategoryFilter([]);
+              setLikedFilterActive((prev) => !prev);
+            }}
+            className="flex flex-col items-center gap-1 shrink-0"
+          >
+            <div
+              style={
+                likedFilterActive ? { background: "#db2777" } : undefined
+              }
+              className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all ${
+                likedFilterActive
+                  ? "border-transparent text-white"
+                  : "bg-secondary border-border dark:border-transparent hover:bg-secondary/80 text-foreground"
+              }`}
             >
-              <div
-                style={
-                  likedFilterActive ? { background: "#db2777" } : undefined
-                }
-                className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 text-white transition-all ${
-                  likedFilterActive
-                    ? "border-transparent"
-                    : "bg-zinc-700 border-zinc-600 hover:bg-zinc-600"
-                }`}
-              >
-                <span className="text-base leading-none">❤️</span>
-                <span className="absolute -top-1.5 -right-4 bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none">
-                  {likedPlaces.length}
-                </span>
-              </div>
-              <span className="text-[10px] font-semibold capitalize leading-none text-zinc-400">
-                liked
+              <span className="text-base leading-none">❤️</span>
+              <span className="absolute -top-1.5 -right-4 text-muted-foreground text-[10px] font-black px-1.5 py-0.5 leading-none bg-border dark:bg-muted rounded-full">
+                {likedPlaces.length}
               </span>
-            </button>
-          )}
+            </div>
+            <span className="text-[10px] font-semibold capitalize leading-none text-muted-foreground">
+              liked
+            </span>
+          </button>
         </div>
       )}
       <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-2 overflow-hidden">
         <div
-          className={`min-h-0 px-4 md:pl-12 md:pr-0 overflow-hidden bg-zinc-900 ${mobileView === "map" ? "hidden md:block" : "flex-1 md:flex-none"}`}
+          className={`min-h-0 px-4 md:pl-12 md:pr-0 overflow-hidden bg-background ${mobileView === "map" ? "hidden md:block" : "flex-1 md:flex-none"}`}
         >
           {listLoading ? (
-            <div className="flex items-center justify-center h-full bg-zinc-900 border-r border-zinc-800">
-              <p className="text-zinc-500 text-sm">Loading...</p>
+            <div className="flex items-center justify-center h-full bg-background border-r border-border">
+              <p className="text-muted-foreground text-sm">Loading...</p>
             </div>
           ) : (
             <PubList
@@ -433,7 +448,7 @@ export default function Home() {
               }}
               onShowMap={() => setMobileView("map")}
               likedPlaces={likedPlaces}
-              onLikeToggle={user ? (id) => likeMutation.mutate(id) : undefined}
+              onLikeToggle={user ? (id) => likeMutation.mutate(id) : toggleLocalLike}
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
               onLoadMore={fetchNextPage}
@@ -445,10 +460,9 @@ export default function Home() {
         <div
           className={`min-h-0 relative overflow-hidden ${mobileView === "list" ? "hidden md:block" : "flex-1 md:flex-none"}`}
         >
-          {/* Mobile: floating back to list button */}
           <button
             onClick={() => setMobileView("list")}
-            className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-zinc-900/90 backdrop-blur-sm text-white rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
+            className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-sm font-semibold shadow-lg border border-border"
           >
             <LuArrowLeft size={16} />
             List view

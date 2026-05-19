@@ -2,27 +2,23 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { SearchBar } from "@/components/search-bar";
-import { AuthDialog } from "@/components/auth-dialog";
 import { AddPlaceDialog } from "@/components/add-place-dialog";
-import { LuUser, LuShield } from "react-icons/lu";
+import { LuUser, LuBuilding2, LuSun, LuMoon } from "react-icons/lu";
 
 export function Navbar() {
-  const { user, isAdmin } = useUser();
+  const { user, isAdmin, isOwner } = useUser();
   const { address, status, coords } = useGeolocation();
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup" | "admin-login">("login");
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [zoneOpen, setZoneOpen] = useState(false);
+
+  useEffect(() => setMounted(true), []);
   const [addPlaceOpen, setAddPlaceOpen] = useState(false);
   const zoneRef = useRef<HTMLDivElement>(null);
-
-  function openAuthFromZone(mode: "login" | "signup" | "admin-login") {
-    setZoneOpen(false);
-    setAuthMode(mode);
-    setAuthOpen(true);
-  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -34,10 +30,20 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [zoneOpen]);
 
+  const themeToggle = (
+    <button
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      aria-label="Toggle theme"
+      className="h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
+    >
+      {mounted && resolvedTheme === "dark" ? <LuSun size={18} /> : <LuMoon size={18} />}
+    </button>
+  );
+
   const addPlaceButton = (
     <button
       onClick={() => setAddPlaceOpen(true)}
-      className="h-11 inline-flex items-center text-sm font-medium text-zinc-300 border border-zinc-700 rounded-lg px-3 hover:text-white hover:border-zinc-500 transition-colors"
+      className="h-11 inline-flex items-center text-sm font-medium text-muted-foreground border border-border rounded-lg px-3 hover:text-foreground hover:border-foreground/40 transition-colors"
     >
       Add place
     </button>
@@ -47,47 +53,50 @@ export function Navbar() {
     <div ref={zoneRef} className="relative">
       <button
         onClick={() => setZoneOpen((v) => !v)}
-        className="h-11 inline-flex items-center text-sm font-medium text-zinc-950 bg-yellow-400 hover:bg-yellow-300 rounded-lg px-3 transition-colors"
+        className="h-9 inline-flex items-center text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-full px-4 transition-colors"
       >
         Sign up
       </button>
       {zoneOpen && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-5 flex flex-col gap-3">
+        <div className="absolute right-0 top-full mt-2 w-72 bg-popover border border-border rounded-xl shadow-2xl z-50 p-5 flex flex-col gap-3">
           {/* User zone */}
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
-              <LuUser size={17} className="text-zinc-300" />
+            <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
+              <LuUser size={17} className="text-muted-foreground" />
             </div>
-            <span className="font-semibold text-white text-sm">User zone</span>
+            <span className="font-semibold text-foreground text-sm">User zone</span>
           </div>
-          <button
-            onClick={() => openAuthFromZone("login")}
-            className="text-left text-base font-medium text-zinc-300 hover:text-white transition-colors"
+          <Link
+            href="/login"
+            onClick={() => setZoneOpen(false)}
+            className="text-left text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Sign in to User&apos;s profile
-          </button>
-          <button
-            onClick={() => openAuthFromZone("signup")}
-            className="text-left text-base font-medium text-zinc-300 hover:text-white transition-colors"
+          </Link>
+          <Link
+            href="/signup"
+            onClick={() => setZoneOpen(false)}
+            className="text-left text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Create an account at User profile
-          </button>
+          </Link>
 
-          <hr className="border-zinc-700" />
+          <hr className="border-border" />
 
-          {/* Admin zone */}
+          {/* Owner zone */}
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-zinc-800 rounded-lg flex items-center justify-center shrink-0">
-              <LuShield size={17} className="text-zinc-300" />
+            <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
+              <LuBuilding2 size={17} className="text-muted-foreground" />
             </div>
-            <span className="font-semibold text-white text-sm">Admin zone</span>
+            <span className="font-semibold text-foreground text-sm">Owner zone</span>
           </div>
-          <button
-            onClick={() => openAuthFromZone("admin-login")}
-            className="text-left text-base font-medium text-zinc-300 hover:text-white transition-colors"
+          <Link
+            href="/owner/login"
+            onClick={() => setZoneOpen(false)}
+            className="text-left text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Sign in to Admin&apos;s panel
-          </button>
+            Sign in to Owner&apos;s panel
+          </Link>
         </div>
       )}
     </div>
@@ -96,10 +105,10 @@ export function Navbar() {
   const authControls = user ? (
     <>
       {addPlaceButton}
-      {isAdmin && (
+      {(isAdmin || isOwner) && (
         <Link
           href="/dashboard"
-          className="h-11 inline-flex items-center text-sm font-medium text-zinc-300 border border-zinc-700 rounded-lg px-3 hover:text-white hover:border-zinc-500 transition-colors"
+          className="h-11 inline-flex items-center text-sm font-medium text-muted-foreground border border-border rounded-lg px-3 hover:text-foreground hover:border-foreground/40 transition-colors"
         >
           Dashboard
         </Link>
@@ -107,7 +116,7 @@ export function Navbar() {
       <Link
         href="/profile"
         aria-label="Profile"
-        className="h-11 w-11 flex items-center justify-center text-zinc-200 hover:text-white border border-zinc-700 rounded-lg hover:border-zinc-500 transition-colors"
+        className="h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
       >
         <LuUser size={18} />
       </Link>
@@ -118,12 +127,12 @@ export function Navbar() {
 
   return (
     <>
-      <header className="px-4 md:px-12 bg-zinc-900 shrink-0">
+      <header className="px-4 md:px-12 bg-background shrink-0">
         {/* Row 1: logo + auth */}
         <div className="flex items-center gap-2 pt-6 pb-4">
           <div className="h-11 flex items-center gap-1.5 shrink-0">
             <span className="text-xl">🍺</span>
-            <h1 className="font-semibold text-white">
+            <h1 className="font-semibold text-foreground">
               <Link href="/">Pub Rater</Link>
             </h1>
           </div>
@@ -135,6 +144,7 @@ export function Navbar() {
           </div>
           {/* Auth controls — rendered once to avoid shared-ref bug */}
           <div className="flex items-center gap-2 ml-auto">
+            {themeToggle}
             {authControls}
           </div>
         </div>
@@ -143,11 +153,6 @@ export function Navbar() {
           <SearchBar />
         </div>
       </header>
-      <AuthDialog
-        open={authOpen}
-        onOpenChange={setAuthOpen}
-        initialMode={authMode}
-      />
       <AddPlaceDialog
         open={addPlaceOpen}
         onOpenChange={setAddPlaceOpen}

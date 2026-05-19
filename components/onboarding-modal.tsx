@@ -36,11 +36,11 @@ export default function OnboardingModal({ userId, onDone }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-xl p-8 max-w-sm w-full mx-4">
-        <h2 className="text-xl font-semibold text-zinc-900 mb-1">
+      <div className="bg-card rounded-2xl border border-border shadow-xl p-8 max-w-sm w-full mx-4">
+        <h2 className="text-xl font-semibold text-foreground mb-1">
           Welcome to Pub Rater
         </h2>
-        <p className="text-sm text-zinc-500 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           What kind of places are you into?
         </p>
 
@@ -50,9 +50,9 @@ export default function OnboardingModal({ userId, onDone }: Props) {
               type="checkbox"
               checked={preferences.pub_preference}
               onChange={() => toggle("pub_preference")}
-              className="w-4 h-4 rounded accent-zinc-900"
+              className="w-4 h-4 rounded accent-primary"
             />
-            <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+            <span className="text-sm font-medium text-foreground">
               🍺 Pubs
             </span>
           </label>
@@ -62,9 +62,9 @@ export default function OnboardingModal({ userId, onDone }: Props) {
               type="checkbox"
               checked={preferences.bar_preference}
               onChange={() => toggle("bar_preference")}
-              className="w-4 h-4 rounded accent-zinc-900"
+              className="w-4 h-4 rounded accent-primary"
             />
-            <span className="text-sm font-medium text-zinc-800 group-hover:text-zinc-900">
+            <span className="text-sm font-medium text-foreground">
               🥂 Bars
             </span>
           </label>
@@ -74,7 +74,7 @@ export default function OnboardingModal({ userId, onDone }: Props) {
           <button
             onClick={() => finish(preferences)}
             disabled={saving}
-            className="w-full text-sm font-medium text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
+            className="w-full text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
           >
             {saving ? "Saving..." : "Done"}
           </button>
@@ -83,7 +83,7 @@ export default function OnboardingModal({ userId, onDone }: Props) {
               finish({ bar_preference: false, pub_preference: false })
             }
             disabled={saving}
-            className="w-full text-sm font-medium text-zinc-500 hover:text-zinc-800 disabled:opacity-50 py-2 transition-colors"
+            className="w-full text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 py-2 transition-colors"
           >
             Skip for now
           </button>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import Map, {
   Marker,
   Popup,
@@ -199,6 +200,11 @@ export default function MapComponent({
   userLocation,
   active,
 }: Props) {
+  const { resolvedTheme } = useTheme();
+  const mapStyle = resolvedTheme === "light"
+    ? `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_LIGHT}`
+    : `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_DARK}`;
+
   const mapRef = useRef<MapRef>(null);
   const [zoom, setZoom] = useState(7);
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
@@ -232,7 +238,7 @@ export default function MapComponent({
     if (!focusedMarker) return;
     mapRef.current?.flyTo({
       center: [focusedMarker.lon, focusedMarker.lat],
-      zoom: 18,
+      zoom: 21,
       duration: 1200,
     });
     const marker = markers.find((m) => m.id === focusedMarker.id);
@@ -273,7 +279,7 @@ export default function MapComponent({
         zoom: 5.7,
       }}
       style={{ width: "100%", height: "100%" }}
-      mapStyle={`mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID}`}
+      mapStyle={mapStyle}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
       onZoom={onZoom}
       minZoom={5}
@@ -306,7 +312,7 @@ export default function MapComponent({
                   {amenityIcon(item.dominantAmenity)}
                 </div>
                 <div
-                  className={`absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
+                  className={`absolute -top-[6px] -right-[14px] bg-zinc-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white/50 shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
                 >
                   {label}
                 </div>
@@ -371,7 +377,7 @@ export default function MapComponent({
           closeButton={false}
         >
           <Link href={`/places/${selectedMarker.id}`} className="flex flex-col gap-1 min-w-[180px]">
-            <p className="font-bold text-xs text-white truncate">
+            <p className="font-bold text-xs truncate">
               {selectedMarker.name}
             </p>
             {!loadingPlace && (() => {
@@ -391,10 +397,10 @@ export default function MapComponent({
                           key={i}
                           className={`inline-flex items-center justify-center w-[14px] h-[14px] rounded text-[9px] font-bold ${
                             full
-                              ? "bg-yellow-400 text-zinc-900"
+                              ? "bg-primary text-primary-foreground"
                               : half
-                              ? "bg-yellow-400/60 text-zinc-900"
-                              : "bg-zinc-700 text-zinc-500"
+                              ? "bg-primary/60 text-primary-foreground"
+                              : "bg-zinc-600 text-zinc-400"
                           }`}
                         >
                           ★
@@ -402,9 +408,9 @@ export default function MapComponent({
                       );
                     })}
                   </div>
-                  <span className="text-xs font-bold text-white">{rating.value.toFixed(1)}</span>
+                  <span className="text-xs font-bold">{rating.value.toFixed(1)}</span>
                   {rating.count != null && (
-                    <span className="text-xs text-zinc-400">({rating.count} reviews)</span>
+                    <span className="text-xs opacity-70">({rating.count} reviews)</span>
                   )}
                 </div>
               ) : null;

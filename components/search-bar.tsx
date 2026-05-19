@@ -56,6 +56,7 @@ export function SearchBar() {
   const { status: geoStatus, coords: geoCoords, enable: enableGeo } = useGeolocation();
   const { user } = useUser();
   const containerRef = useRef<HTMLDivElement>(null);
+  const justSelected = useRef(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedInput(input), 300);
@@ -63,6 +64,10 @@ export function SearchBar() {
   }, [input]);
 
   useEffect(() => {
+    if (justSelected.current) {
+      justSelected.current = false;
+      return;
+    }
     setOpen(debouncedInput.length > 0 && !filtersOpen);
   }, [debouncedInput, filtersOpen]);
 
@@ -93,6 +98,7 @@ export function SearchBar() {
   const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
 
   function handleSelect(marker: MapMarker) {
+    justSelected.current = true;
     setSearchSelectedId(marker.id);
     setSearchQuery("");
     setInput(marker.name);
@@ -134,11 +140,11 @@ export function SearchBar() {
       <div
         className={`flex items-center gap-2 px-4 h-11 rounded-xl border text-sm transition-colors ${
           isActive
-            ? "bg-yellow-400/10 border-yellow-400/50 text-yellow-100"
-            : "bg-zinc-800 border-zinc-700 text-zinc-200"
+            ? "bg-primary/10 border-primary/50 text-foreground"
+            : "bg-card border-border dark:bg-zinc-700 dark:border-zinc-600 text-foreground dark:text-zinc-200"
         }`}
       >
-        <LuSearch className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
+        <LuSearch className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -150,12 +156,12 @@ export function SearchBar() {
             }
           }}
           placeholder="Search places…"
-          className="flex-1 bg-transparent outline-none placeholder:text-zinc-500 text-sm min-w-0"
+          className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-sm min-w-0"
         />
         {input && (
           <button
             onClick={handleClear}
-            className="text-zinc-400 hover:text-white leading-none shrink-0"
+            className="text-muted-foreground hover:text-foreground leading-none shrink-0"
           >
             ✕
           </button>
@@ -167,8 +173,8 @@ export function SearchBar() {
           }}
           className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
             filtersOpen || hasActiveFilters
-              ? "bg-yellow-400 text-zinc-950 ring-2 ring-yellow-300/50"
-              : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+              ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
           }`}
           aria-label="More filters"
         >
@@ -181,11 +187,11 @@ export function SearchBar() {
         <div className="absolute top-full mt-1 left-0 w-full min-w-64 z-50">
           <Command
             shouldFilter={false}
-            className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden"
+            className="bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
           >
             <CommandList>
               {suggestions.length === 0 ? (
-                <CommandEmpty className="text-zinc-500 text-xs py-4">
+                <CommandEmpty className="text-muted-foreground text-xs py-4">
                   No results for &quot;{debouncedInput}&quot;
                 </CommandEmpty>
               ) : (
@@ -201,10 +207,10 @@ export function SearchBar() {
                         {AMENITY_ICONS[marker.amenity] ?? "📍"}
                       </span>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm text-zinc-200 truncate">
+                        <span className="text-sm text-foreground truncate">
                           {marker.name}
                         </span>
-                        <span className="text-[10px] text-zinc-500 capitalize">
+                        <span className="text-[10px] text-muted-foreground capitalize">
                           {marker.amenity}
                         </span>
                       </div>
@@ -213,7 +219,7 @@ export function SearchBar() {
                   <CommandItem
                     value="__search_all__"
                     onSelect={handleSearchAll}
-                    className="border-t border-zinc-800 text-zinc-400 text-xs px-3 py-2.5 cursor-pointer"
+                    className="border-t border-border text-muted-foreground text-xs px-3 py-2.5 cursor-pointer"
                   >
                     <LuSearch className="w-3.5 h-3.5 shrink-0" />
                     Show all results for &quot;{debouncedInput}&quot;
@@ -227,7 +233,7 @@ export function SearchBar() {
 
       {/* Filters popup */}
       {filtersOpen && (
-        <div className="absolute top-full mt-1 right-0 w-full min-w-64 z-50 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-3 flex flex-col gap-3">
+        <div className="absolute top-full mt-1 right-0 w-full min-w-64 z-50 bg-popover border border-border rounded-xl shadow-2xl p-3 flex flex-col gap-3">
           {/* My spots + Liked places — only for logged-in users */}
           {user && (
             <div className="flex gap-2">
@@ -235,8 +241,8 @@ export function SearchBar() {
                 onClick={() => setFilterActive((v) => !v)}
                 className={`flex-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
                   filterActive
-                    ? "bg-yellow-400 text-zinc-950 border-yellow-400"
-                    : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:border-primary/50"
                 }`}
               >
                 My spots
@@ -246,7 +252,7 @@ export function SearchBar() {
                 className={`flex-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
                   likedFilterActive
                     ? "bg-rose-500 text-white border-rose-500"
-                    : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                    : "text-muted-foreground border-border hover:border-primary/50"
                 }`}
               >
                 Liked places
@@ -258,7 +264,7 @@ export function SearchBar() {
           <select
             value={voivodeshipFilter ?? ""}
             onChange={(e) => setVoivodeshipFilter(e.target.value || null)}
-            className="w-full bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-zinc-500"
+            className="w-full bg-input border border-border text-foreground text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-ring"
           >
             <option value="">All voivodeships</option>
             {VOIVODESHIPS.map((v) => (
@@ -284,7 +290,7 @@ export function SearchBar() {
               className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 radiusFilter !== null
                   ? "bg-sky-500 text-white border-sky-500"
-                  : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                  : "text-muted-foreground border-border hover:border-primary/50"
               }`}
             >
               <LuCrosshair size={12} />
@@ -294,7 +300,7 @@ export function SearchBar() {
               <select
                 value={radiusFilter}
                 onChange={(e) => setRadiusFilter(Number(e.target.value))}
-                className="flex-1 bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-zinc-500"
+                className="flex-1 bg-input border border-border text-foreground text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-ring"
               >
                 <option value="0.1">0.1 km</option>
                 <option value="0.5">0.5 km</option>
@@ -323,7 +329,7 @@ export function SearchBar() {
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${
                       active
                         ? "border-transparent text-white"
-                        : "text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                        : "text-muted-foreground border-border hover:border-primary/50"
                     }`}
                     style={active ? { background: AMENITY_COLORS[type] ?? "#4b5563" } : undefined}
                   >

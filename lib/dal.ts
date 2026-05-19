@@ -50,3 +50,37 @@ export async function getIsAdmin(): Promise<boolean> {
     .single()
   return data?.role === 'admin'
 }
+
+/**
+ * Returns true if the currently authenticated user has role 'owner'.
+ */
+export async function getIsOwner(): Promise<boolean> {
+  const user = await getUser()
+  if (!user) return false
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  return data?.role === 'owner'
+}
+
+/**
+ * Requires the user to have role 'admin' or 'owner'.
+ * Redirects to / otherwise. Returns the user and their role.
+ */
+export async function requireDashboard(): Promise<{ role: 'admin' | 'owner' }> {
+  const { redirect } = await import('next/navigation')
+  const user = await getUser()
+  if (!user) redirect('/')
+  const supabase = await createServerSupabaseClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user!.id)
+    .single()
+  const role = data?.role
+  if (role !== 'admin' && role !== 'owner') redirect('/')
+  return { role: role as 'admin' | 'owner' }
+}

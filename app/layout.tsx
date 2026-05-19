@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Lato } from "next/font/google";
-import { Navbar } from "@/components/navbar";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -29,10 +28,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${lato.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="h-full flex flex-col">
         <Providers>
-          <Navbar />
           {children}
         </Providers>
       </body>

@@ -2,6 +2,7 @@
 
 import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { useTheme } from "next-themes";
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",
@@ -29,14 +30,18 @@ interface Props {
 }
 
 export default function PlaceMap({ lat, lon, amenity, userLocation }: Props) {
+  const { resolvedTheme } = useTheme();
   const bg = AMENITY_COLORS[amenity] ?? "#4b5563";
   const icon = AMENITY_ICONS[amenity] ?? "📍";
+  const mapStyle = resolvedTheme === "light"
+    ? `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_LIGHT}`
+    : `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_DARK}`;
 
   return (
     <Map
       initialViewState={{ longitude: lon, latitude: lat, zoom: 15 }}
       style={{ width: "100%", height: "100%" }}
-      mapStyle={`mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID}`}
+      mapStyle={mapStyle}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
       minZoom={5}
     >

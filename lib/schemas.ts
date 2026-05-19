@@ -48,9 +48,36 @@ export const SignupStep2Schema = z.object({
     .optional(),
 })
 
+const birthDateRefinement = (val: string) => {
+  if (!val) return false
+  const born = new Date(val)
+  if (isNaN(born.getTime())) return false
+  const today = new Date()
+  const threshold = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  )
+  return born <= threshold
+}
+
+export const SignupSchema = z.object({
+  email: z.string().trim().email('Enter a valid email'),
+  password: strongPassword,
+  display_name: z
+    .string()
+    .trim()
+    .min(2, 'Min 2 characters')
+    .max(50, 'Max 50 characters'),
+  birth_date: z.string().refine(birthDateRefinement, 'Must be 18 or older'),
+  pub_preference: z.boolean(),
+  bar_preference: z.boolean(),
+})
+
 export type LoginValues = z.infer<typeof LoginSchema>
 export type SignupStep1Values = z.infer<typeof SignupStep1Schema>
 export type SignupStep2Values = z.infer<typeof SignupStep2Schema>
+export type SignupValues = z.infer<typeof SignupSchema>
 
 const DayHoursSchema = z.object({
   open: z.string(),
@@ -112,6 +139,7 @@ export const PlaceSchema = z.object({
   app_review_count: z.number().nullable(),
   thumbnail: z.string().nullable(),
   app_reviews: z.array(z.string()).nullable(),
+  short_code: z.string(),
 })
 
 // Matches the reviews table
@@ -139,7 +167,8 @@ export const ProfileSchema = z.object({
   preferences: ProfilePreferencesSchema,
   age: z.number(),
   liked_places: z.array(z.string()),
-  role: z.enum(['user', 'admin']),
+  role: z.enum(['user', 'admin', 'owner']),
+  avatar_url: z.string().nullable(),
 })
 
 // Add place form

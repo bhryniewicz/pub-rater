@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useUser } from "@/hooks/use-user";
 import { type PubListItem } from "@/lib/supabase";
 import { isOpenNow, getCloseTimeToday } from "@/lib/opening-hours";
 import Image from "next/image";
@@ -29,14 +28,14 @@ function StarRating({
             return (
               <span
                 key={i}
-                className="relative inline-flex items-center justify-center w-[18px] h-[18px] rounded-sm overflow-hidden text-[11px] font-bold bg-zinc-700 text-zinc-500"
+                className="relative inline-flex items-center justify-center w-[18px] h-[18px] rounded-sm overflow-hidden text-[11px] font-bold bg-muted text-muted-foreground"
               >
                 ★
                 <span
                   className="absolute top-0 left-0 bottom-0 overflow-hidden"
                   style={{ width: "50%" }}
                 >
-                  <span className="absolute top-0 left-0 w-[18px] h-[18px] bg-yellow-400 text-zinc-900 flex items-center justify-center text-[11px] font-bold">
+                  <span className="absolute top-0 left-0 w-[18px] h-[18px] bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-bold">
                     ★
                   </span>
                 </span>
@@ -48,8 +47,8 @@ function StarRating({
               key={i}
               className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-sm text-[11px] font-bold ${
                 full
-                  ? "bg-yellow-400 text-zinc-900"
-                  : "bg-zinc-700 text-zinc-500"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               ★
@@ -57,9 +56,11 @@ function StarRating({
           );
         })}
       </div>
-      <span className="text-xs font-bold text-white">{rating.toFixed(1)}</span>
+      <span className="text-xs font-bold text-foreground">
+        {rating.toFixed(1)}
+      </span>
       {count != null && (
-        <span className="text-xs text-zinc-500">({count} reviews)</span>
+        <span className="text-xs text-muted-foreground">({count} reviews)</span>
       )}
     </div>
   );
@@ -101,58 +102,66 @@ export default function PubList({
   openFilterActive,
   onOpenFilterToggle,
 }: Props) {
-  const { user } = useUser();
   const sentinelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const isFetchingRef = useRef(isFetchingNextPage);
+  useEffect(() => {
+    isFetchingRef.current = isFetchingNextPage;
+  });
+
+  const handleIntersect = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0].isIntersecting && !isFetchingRef.current && onLoadMore) {
+        onLoadMore();
+      }
+    },
+    [onLoadMore],
+  );
 
   useEffect(() => {
     if (!onLoadMore || !hasNextPage) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          onLoadMore();
-        }
-      },
-      { root: listRef.current, threshold: 0 },
-    );
+    const observer = new IntersectionObserver(handleIntersect, {
+      root: listRef.current,
+      threshold: 0,
+    });
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+  }, [hasNextPage, handleIntersect]);
 
   return (
-    <aside className="flex flex-col h-full overflow-hidden  border-r border-zinc-800">
+    <aside className="flex flex-col h-full overflow-hidden border-r border-border">
       <div className="md:pr-4 pt-2 pb-4 shrink-0 flex items-center justify-between">
-        <p className="text-sm text-zinc-400 font-extrabold">
+        <p className="text-sm text-muted-foreground bg- font-extrabold">
           Dostępne lokale - {totalCount} lokali
         </p>
         <div className="flex items-center gap-2">
           {onOpenFilterToggle && (
             <label
               className={`flex items-center gap-1.5 cursor-pointer text-xs font-extrabold transition-colors ${
-                openFilterActive ? "text-yellow-400" : "text-zinc-400"
+                openFilterActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <MdDoorFront
                 className={`text-base transition-colors ${
-                  openFilterActive ? "text-yellow-400" : "text-zinc-500"
+                  openFilterActive ? "text-primary" : "text-muted-foreground"
                 }`}
               />
 
               <Switch
                 checked={openFilterActive ?? false}
                 onCheckedChange={() => onOpenFilterToggle()}
-                className="data-unchecked:bg-zinc-600 data-checked:bg-yellow-400"
+                className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
               />
             </label>
           )}
           {onShowMap && (
             <button
               onClick={onShowMap}
-              className="md:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border text-zinc-300 border-zinc-700 hover:border-zinc-500 transition-colors"
+              className="md:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border text-muted-foreground border-border hover:border-primary/50 transition-colors"
             >
               <LuMap size={13} />
               Map
@@ -163,7 +172,7 @@ export default function PubList({
 
       <ul
         ref={listRef}
-        className="flex-1 overflow-y-auto flex flex-col gap-3 md:pr-4 pt-0"
+        className="flex-1 overflow-y-auto flex flex-col gap-4 md:gap-3 md:pr-4 pt-0"
       >
         {markers.map((marker, index) => {
           const openNow = marker.opening_hours
@@ -176,10 +185,10 @@ export default function PubList({
           return (
             <li
               key={marker.id}
-              className="shrink-0 rounded-2xl overflow-hidden bg-zinc-800 border border-zinc-700/50 hover:shadow-lg hover:shadow-black/40 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:border md:border-zinc-700 md:overflow-visible"
+              className="shrink-0 rounded-2xl overflow-hidden bg-card hover:shadow-sm hover:shadow-black/10 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:overflow-visible"
             >
               {/* Image — full-width on mobile, fixed square on desktop */}
-              <div className="relative w-full h-52 bg-zinc-700 md:w-36 md:h-36 md:shrink-0 md:rounded-lg md:overflow-hidden">
+              <div className="relative w-full h-52 bg-secondary md:w-36 md:h-36 md:shrink-0 md:rounded-lg md:overflow-hidden">
                 <Link
                   href={`/places/${marker.id}`}
                   className="block w-full h-full"
@@ -198,20 +207,6 @@ export default function PubList({
                   )}
                 </Link>
 
-                {/* Open/Closed badge — bottom-left of image, mobile only */}
-                <div className="absolute bottom-3 left-3 md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${openNow === true ? "bg-green-400" : openNow === false ? "bg-red-400" : "bg-zinc-400"}`}
-                  />
-                  <span className="text-xs font-bold text-white">
-                    {openNow === true
-                      ? "Open"
-                      : openNow === false
-                        ? "Closed"
-                        : "No hours"}
-                  </span>
-                </div>
-
                 {/* Bookmark — top-right of image, mobile only */}
                 {onLikeToggle && (
                   <button
@@ -220,12 +215,43 @@ export default function PubList({
                     className="md:hidden absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm"
                   >
                     {isLiked ? (
-                      <BsBookmarkFill className="w-5 h-5 text-yellow-400" />
+                      <BsBookmarkFill className="w-5 h-5 text-primary" />
                     ) : (
                       <BsBookmark className="w-5 h-5 text-white" />
                     )}
                   </button>
                 )}
+
+                {/* Mobile bottom overlay: open/close status left, map icon right */}
+                <div className="absolute bottom-3 left-3 right-3 md:hidden flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${openNow === true ? "bg-green-400" : openNow === false ? "bg-red-400" : "bg-zinc-400"}`}
+                    />
+                    <span className="text-xs font-bold text-white">
+                      {openNow === true
+                        ? closeTime
+                          ? `Open until ${closeTime}`
+                          : "Open"
+                        : openNow === false
+                          ? "Closed"
+                          : "No hours"}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() =>
+                      onShowOnMap({
+                        id: marker.id,
+                        lat: marker.lat,
+                        lon: marker.lon,
+                      })
+                    }
+                    aria-label="Show on map"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm"
+                  >
+                    <LuMap size={18} className="text-white" />
+                  </button>
+                </div>
               </div>
 
               {/* Content + mobile footer */}
@@ -234,7 +260,7 @@ export default function PubList({
                   href={`/places/${marker.id}`}
                   className="flex flex-col gap-2.5 p-4 md:p-0 md:py-1 flex-1 min-w-0"
                 >
-                  <p className="font-extrabold text-lg md:text-lg text-white leading-tight truncate">
+                  <p className="font-extrabold text-lg md:text-lg text-foreground leading-tight truncate">
                     {marker.name}
                   </p>
 
@@ -245,34 +271,34 @@ export default function PubList({
                     />
                   ) : null}
 
-                  <p className="flex items-center gap-1.5 text-xs text-white/80 font-extrabold">
+                  <p className="flex items-center gap-1.5 text-xs text-foreground/80 font-extrabold">
                     {(marker.address || marker.city) && (
                       <>
-                        <IoLocationSharp className="w-3.5 h-3.5 shrink-0 text-zinc-400 -mr-1" />
+                        <IoLocationSharp className="w-3.5 h-3.5 shrink-0 text-muted-foreground -mr-1" />
                         {marker.address ?? marker.city}
                       </>
                     )}
                     <span className="hidden md:inline-flex items-center gap-1.5">
                       {(marker.address || marker.city) && (
-                        <span className="text-white/80 text-[8px]">•</span>
+                        <span className="text-foreground/80 text-[8px]">•</span>
                       )}
                       {openNow === true ? (
                         <>
-                          <span className="font-extrabold text-green-400">
+                          <span className="font-extrabold text-green-500">
                             Open
                           </span>
                           {closeTime && (
-                            <span className="text-white/80 font-extrabold">
+                            <span className="text-foreground/80 font-extrabold">
                               until {closeTime}
                             </span>
                           )}
                         </>
                       ) : openNow === false ? (
-                        <span className="font-extrabold text-red-400">
+                        <span className="font-extrabold text-red-500">
                           Closed
                         </span>
                       ) : (
-                        <span className="font-extrabold text-zinc-500">
+                        <span className="font-extrabold text-muted-foreground">
                           No hours
                         </span>
                       )}
@@ -280,60 +306,40 @@ export default function PubList({
                   </p>
 
                   <div className="flex items-center gap-1.5 flex-wrap md:mt-auto">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] md:text-[12px] bg-zinc-700 text-white font-bold">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] md:text-[12px] bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-bold">
                       {marker.amenity.charAt(0).toUpperCase() +
                         marker.amenity.slice(1)}
                     </span>
                   </div>
                 </Link>
 
-                {/* Mobile: full-width Show on map button */}
-                {user && (
-                  <div className="px-4 pb-4 pt-1 md:hidden">
-                    <button
-                      onClick={() =>
-                        onShowOnMap({
-                          id: marker.id,
-                          lat: marker.lat,
-                          lon: marker.lon,
-                        })
-                      }
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-yellow-400 text-zinc-950 font-bold text-base hover:bg-yellow-300 transition-colors"
-                    >
-                      <LuMap size={18} />
-                      Show on map
-                    </button>
-                  </div>
-                )}
               </div>
 
-              {/* Desktop: action buttons column (right side) */}
-              <div className="hidden md:flex flex-col justify-center gap-2 shrink-0">
-                {user && (
-                  <button
-                    onClick={() =>
-                      onShowOnMap({
-                        id: marker.id,
-                        lat: marker.lat,
-                        lon: marker.lon,
-                      })
-                    }
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-yellow-400 text-zinc-950 font-bold text-sm hover:bg-yellow-300 transition-colors"
-                  >
-                    <LuMap size={14} />
-                    Show on map
-                  </button>
-                )}
+              {/* Desktop: action icons — top-right corner */}
+              <div className="hidden md:flex flex-row items-center gap-1 shrink-0 self-start">
+                <button
+                  onClick={() =>
+                    onShowOnMap({
+                      id: marker.id,
+                      lat: marker.lat,
+                      lon: marker.lon,
+                    })
+                  }
+                  aria-label="Show on map"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  <LuMap size={16} />
+                </button>
                 {onLikeToggle && (
                   <button
                     onClick={() => onLikeToggle(marker.id)}
-                    className="flex items-center justify-center"
                     aria-label={isLiked ? "Unlike" : "Like"}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
                   >
                     {isLiked ? (
-                      <BsBookmarkFill className="w-4 h-4 text-yellow-400" />
+                      <BsBookmarkFill className="w-4 h-4 text-primary" />
                     ) : (
-                      <BsBookmark className="w-4 h-4 text-zinc-400" />
+                      <BsBookmark className="w-4 h-4 text-muted-foreground" />
                     )}
                   </button>
                 )}
@@ -345,10 +351,10 @@ export default function PubList({
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="py-4 text-center">
           {isFetchingNextPage && (
-            <p className="text-xs text-zinc-500">Loading more...</p>
+            <p className="text-xs text-muted-foreground">Loading more...</p>
           )}
           {!hasNextPage && markers.length > 0 && (
-            <p className="text-xs text-zinc-600">All places loaded</p>
+            <p className="text-xs text-muted-foreground">All places loaded</p>
           )}
         </div>
       </ul>

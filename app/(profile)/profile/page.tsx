@@ -10,11 +10,9 @@ export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("preferences")
+    .select("preferences, avatar_url")
     .eq("id", user.id)
     .single();
-
-  console.log("Profile data:", user);
 
   return (
     <ProfileForm
@@ -22,6 +20,7 @@ export default async function ProfilePage() {
       email={user.email!}
       createdAt={user.created_at}
       preferences={profile?.preferences}
+      avatarUrl={profile?.avatar_url ?? null}
     />
   );
 }

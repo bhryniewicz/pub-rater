@@ -53,7 +53,7 @@ async function fetchPlaceData(markerId: string) {
       .select("id, name, amenity, lat, lon")
       .eq("id", markerId)
       .single(),
-    supabase.from("places").select("*").eq("marker_id", markerId).single(),
+    supabase.from("places").select("*, short_code").eq("marker_id", markerId).single(),
     supabase
       .from("reviews")
       .select("*")
@@ -85,7 +85,10 @@ export default function PlaceDetailPage() {
   });
 
   function copyLink() {
-    navigator.clipboard.writeText(window.location.href);
+    const url = place?.short_code
+      ? `${window.location.origin}/p/${place.short_code}`
+      : window.location.href;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -129,6 +132,8 @@ export default function PlaceDetailPage() {
         if (!old) return old;
         return { ...old, reviews: [newReview, ...old.reviews] };
       });
+      queryClient.invalidateQueries({ queryKey: ["pub_list"] });
+      queryClient.invalidateQueries({ queryKey: ["markers"] });
       reviewForm.reset();
       setHoverRating(0);
     },
@@ -136,8 +141,8 @@ export default function PlaceDetailPage() {
 
   if (isLoading) {
     return (
-      <main className="flex items-center justify-center flex-1 bg-zinc-950">
-        <p className="text-zinc-500 text-sm">Loading...</p>
+      <main className="flex items-center justify-center flex-1 bg-background">
+        <p className="text-muted-foreground text-sm">Loading...</p>
       </main>
     );
   }
@@ -149,20 +154,18 @@ export default function PlaceDetailPage() {
   console.log(place?.opening_hours, "hours");
 
   return (
-    <main className="flex-1 overflow-y-auto bg-zinc-950">
+    <main className="flex-1 overflow-y-auto bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Back */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <LuArrowLeft className="w-4 h-4" />
           Back
         </Link>
 
-        {/* Header */}
         <div className="flex gap-4 mb-8">
-          <div className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-zinc-800">
+          <div className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-secondary">
             {place?.thumbnail ? (
               <Image
                 src={place.thumbnail}
@@ -177,10 +180,10 @@ export default function PlaceDetailPage() {
             )}
           </div>
           <div className="flex flex-col justify-center gap-1.5 min-w-0">
-            <h1 className="text-xl font-black text-white leading-tight">
+            <h1 className="text-xl font-black text-foreground leading-tight">
               {marker.name}
             </h1>
-            <span className="inline-flex items-center gap-1 w-fit px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-800 border border-zinc-700 text-zinc-400 capitalize">
+            <span className="inline-flex items-center gap-1 w-fit px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary border border-border text-muted-foreground capitalize">
               {AMENITY_ICONS[marker.amenity] && (
                 <span>{AMENITY_ICONS[marker.amenity]}</span>
               )}
@@ -189,8 +192,7 @@ export default function PlaceDetailPage() {
           </div>
         </div>
 
-        {/* Map */}
-        <div className="mb-8 rounded-xl overflow-hidden border border-zinc-800 h-56">
+        <div className="mb-8 rounded-xl overflow-hidden border border-border h-56">
           <PlaceMap
             lat={marker.lat}
             lon={marker.lon}
@@ -199,31 +201,29 @@ export default function PlaceDetailPage() {
           />
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 mb-8">
           <button
             onClick={copyLink}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-sm font-semibold text-zinc-200 hover:bg-zinc-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
           >
             <LuCopy className="w-4 h-4 shrink-0" />
             {copied ? "Copied!" : "Copy link"}
           </button>
           <button
             onClick={() => navigateToPlace(marker.lat, marker.lon)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-400 text-zinc-950 text-sm font-bold hover:bg-yellow-300 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
           >
             <LuNavigation className="w-4 h-4 shrink-0" />
             {userLocation ? "Navigate from my location" : "Navigate"}
           </button>
         </div>
 
-        {/* Details */}
         {place && (
           <section className="mb-8 space-y-3">
-            <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
               Details
             </h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl divide-y divide-zinc-800">
+            <div className="bg-card border border-border rounded-xl divide-y divide-border">
               {place.address && (
                 <Detail label="Address" value={place.address} />
               )}
@@ -237,7 +237,7 @@ export default function PlaceDetailPage() {
                       href={place.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-yellow-400 hover:underline truncate"
+                      className="text-primary hover:underline truncate"
                     >
                       {place.website}
                     </a>
@@ -257,9 +257,8 @@ export default function PlaceDetailPage() {
           </section>
         )}
 
-        {/* Comments */}
         <section>
-          <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">
+          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
             Comments ({reviews.length})
           </h2>
 
@@ -290,8 +289,8 @@ export default function PlaceDetailPage() {
                             <span
                               className={
                                 (hoverRating || field.value) >= star
-                                  ? "text-yellow-400"
-                                  : "text-zinc-600"
+                                  ? "text-primary"
+                                  : "text-muted"
                               }
                             >
                               ★
@@ -299,7 +298,7 @@ export default function PlaceDetailPage() {
                           </button>
                         ))}
                         {field.value > 0 && (
-                          <span className="text-xs text-zinc-500 ml-1">
+                          <span className="text-xs text-muted-foreground ml-1">
                             {field.value}/5
                           </span>
                         )}
@@ -329,7 +328,7 @@ export default function PlaceDetailPage() {
                 />
 
                 {commentMutation.isError && (
-                  <p className="text-xs text-red-400">
+                  <p className="text-xs text-red-500">
                     Failed to post comment. Please try again.
                   </p>
                 )}
@@ -343,8 +342,8 @@ export default function PlaceDetailPage() {
               </form>
             </Form>
           ) : (
-            <p className="text-sm text-zinc-500 mb-6">
-              <Link href="/" className="text-yellow-400 hover:underline">
+            <p className="text-sm text-muted-foreground mb-6">
+              <Link href="/" className="text-primary hover:underline">
                 Sign in
               </Link>{" "}
               to leave a comment.
@@ -352,7 +351,7 @@ export default function PlaceDetailPage() {
           )}
 
           {reviews.length === 0 ? (
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-muted-foreground">
               No comments yet. Be the first!
             </p>
           ) : (
@@ -360,14 +359,14 @@ export default function PlaceDetailPage() {
               {reviews.map((review) => (
                 <li
                   key={review.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
+                  className="bg-card border border-border rounded-xl px-4 py-3"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-zinc-400">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {review.user_email ?? "Anonymous"}
                     </span>
                     {review.created_at && (
-                      <span className="text-xs text-zinc-600">
+                      <span className="text-xs text-muted-foreground">
                         {new Date(review.created_at).toLocaleDateString()}
                       </span>
                     )}
@@ -377,18 +376,18 @@ export default function PlaceDetailPage() {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <span
                           key={star}
-                          className={`text-base leading-none ${review.rating! >= star ? "text-yellow-400" : "text-zinc-700"}`}
+                          className={`text-base leading-none ${review.rating! >= star ? "text-primary" : "text-muted"}`}
                         >
                           ★
                         </span>
                       ))}
-                      <span className="text-xs text-zinc-500 ml-1">
+                      <span className="text-xs text-muted-foreground ml-1">
                         {review.rating}/5
                       </span>
                     </div>
                   )}
                   {review.comment && (
-                    <p className="text-sm text-zinc-200 leading-relaxed">
+                    <p className="text-sm text-foreground leading-relaxed">
                       {review.comment}
                     </p>
                   )}
@@ -405,10 +404,10 @@ export default function PlaceDetailPage() {
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start gap-4 px-4 py-3">
-      <span className="text-xs font-medium text-zinc-500 w-24 shrink-0 pt-0.5">
+      <span className="text-xs font-medium text-muted-foreground w-24 shrink-0 pt-0.5">
         {label}
       </span>
-      <span className="text-sm text-zinc-200 min-w-0 break-words">{value}</span>
+      <span className="text-sm text-foreground min-w-0 break-words">{value}</span>
     </div>
   );
 }
@@ -432,9 +431,9 @@ function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-zinc-500">Hours</span>
+        <span className="text-xs font-medium text-muted-foreground">Hours</span>
         <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full ${open ? "bg-green-500/15 text-green-400" : "bg-zinc-800 text-zinc-500"}`}
+          className={`text-xs font-bold px-2 py-0.5 rounded-full ${open ? "bg-green-500/15 text-green-600" : "bg-muted text-muted-foreground"}`}
         >
           {open ? "Open now" : "Closed now"}
         </span>
@@ -446,7 +445,7 @@ function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
           return (
             <div
               key={key}
-              className={`flex items-center justify-between py-1 ${isToday ? "text-white" : "text-zinc-500"}`}
+              className={`flex items-center justify-between py-1 ${isToday ? "text-foreground" : "text-muted-foreground"}`}
             >
               <span
                 className={`text-xs w-24 ${isToday ? "font-bold" : "font-medium"}`}

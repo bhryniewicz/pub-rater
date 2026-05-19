@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean } {
+export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean; isOwner: boolean } {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
 
   async function fetchRole(userId: string) {
     const { data } = await supabase
@@ -16,6 +17,7 @@ export function useUser(): { user: User | null; loading: boolean; isAdmin: boole
       .eq('id', userId)
       .single()
     setIsAdmin(data?.role === 'admin')
+    setIsOwner(data?.role === 'owner')
   }
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export function useUser(): { user: User | null; loading: boolean; isAdmin: boole
         setUser(u)
         setLoading(false)
         if (u) fetchRole(u.id)
-        else setIsAdmin(false)
+        else { setIsAdmin(false); setIsOwner(false) }
       })
     }
 
@@ -45,7 +47,7 @@ export function useUser(): { user: User | null; loading: boolean; isAdmin: boole
         setUser(u)
         setLoading(false)
         if (u) fetchRole(u.id)
-        else setIsAdmin(false)
+        else { setIsAdmin(false); setIsOwner(false) }
       }
     )
 
@@ -55,5 +57,5 @@ export function useUser(): { user: User | null; loading: boolean; isAdmin: boole
     }
   }, [])
 
-  return { user, loading, isAdmin }
+  return { user, loading, isAdmin, isOwner }
 }

@@ -32,12 +32,12 @@ export default function OnboardForm({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 shadow-sm p-8 max-w-sm w-full">
+    <div className="bg-card rounded-2xl border border-border shadow-sm p-8 max-w-sm w-full">
       <div className="text-3xl mb-4">🍺</div>
-      <h1 className="text-xl font-semibold text-white mb-1">
+      <h1 className="text-xl font-semibold text-foreground mb-1">
         Welcome to Pub Rater
       </h1>
-      <p className="text-sm text-zinc-400 mb-8">
+      <p className="text-sm text-muted-foreground mb-8">
         What kind of places are you into?
       </p>
 
@@ -47,9 +47,9 @@ export default function OnboardForm({ userId }: { userId: string }) {
             type="checkbox"
             checked={preferences.pub_preference}
             onChange={() => toggle("pub_preference")}
-            className="w-4 h-4 rounded accent-yellow-400"
+            className="w-4 h-4 rounded accent-primary"
           />
-          <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
+          <span className="text-sm font-medium text-foreground">
             🍺 Pubs
           </span>
         </label>
@@ -59,9 +59,9 @@ export default function OnboardForm({ userId }: { userId: string }) {
             type="checkbox"
             checked={preferences.bar_preference}
             onChange={() => toggle("bar_preference")}
-            className="w-4 h-4 rounded accent-yellow-400"
+            className="w-4 h-4 rounded accent-primary"
           />
-          <span className="text-sm font-medium text-zinc-200 group-hover:text-white">
+          <span className="text-sm font-medium text-foreground">
             🥂 Bars
           </span>
         </label>
@@ -71,14 +71,14 @@ export default function OnboardForm({ userId }: { userId: string }) {
         <button
           onClick={() => finishMutation.mutate(preferences)}
           disabled={finishMutation.isPending}
-          className="w-full text-sm font-medium text-zinc-950 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
+          className="w-full text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg px-4 py-2.5 transition-colors"
         >
           {finishMutation.isPending ? "Saving..." : "Done"}
         </button>
         <button
           onClick={() => finishMutation.mutate({ bar_preference: false, pub_preference: false })}
           disabled={finishMutation.isPending}
-          className="w-full text-sm font-medium text-zinc-500 hover:text-zinc-300 disabled:opacity-50 py-2 transition-colors"
+          className="w-full text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 py-2 transition-colors"
         >
           Skip for now
         </button>

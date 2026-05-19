@@ -34,12 +34,9 @@ const LocationPickerMap = dynamic(
 );
 
 const AMENITIES = [
-  { value: "pub", label: "Pub 🍺" },
-  { value: "bar", label: "Bar 🥂" },
-  { value: "restaurant", label: "Restaurant 🍽️" },
-  { value: "cafe", label: "Cafe ☕" },
-  { value: "nightclub", label: "Nightclub 🎶" },
-  { value: "biergarten", label: "Biergarten 🌻" },
+  { value: "pub", label: "Pub", icon: "🍺" },
+  { value: "bar", label: "Bar", icon: "🥂" },
+  { value: "biergarten", label: "Beer Garden", icon: "🌻" },
 ] as const;
 
 const DAYS = ["mo", "tu", "we", "th", "fr", "sa", "su"] as const;
@@ -132,164 +129,172 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Suggest a place</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex flex-1 min-h-0 h-[600px]">
+          {/* Left: map */}
+          <div className="flex-1 relative min-h-0">
+            <LocationPickerMap
+              lat={lat ?? null}
+              lon={lon ?? null}
+              initialCenter={initialCenter}
+              onChange={(newLat, newLon) => {
+                form.setValue("lat", newLat, { shouldValidate: true });
+                form.setValue("lon", newLon, { shouldValidate: true });
+              }}
+            />
+            {lat != null && lon != null && (
+              <p className="absolute top-2 left-2 text-xs bg-primary rounded px-2 py-0.5 text-white dark:text-black font-medium">
+                {lat.toFixed(5)}, {lon.toFixed(5)}
+              </p>
+            )}
+            {form.formState.errors.lat && (
+              <p className="absolute top-2 left-2 text-xs text-destructive bg-background/80 rounded px-2 py-0.5">
+                {form.formState.errors.lat.message}
+              </p>
+            )}
+          </div>
 
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
-              {/* Name */}
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. The Red Lion" className="h-9" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* Right: form */}
+          <div className="w-[420px] shrink-0 flex flex-col overflow-y-auto">
+            <div className="p-6 pb-0">
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold">Suggest a place</DialogTitle>
+              </DialogHeader>
+            </div>
 
-              {/* Category */}
-              <FormField
-                control={form.control}
-                name="amenity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <select
-                        {...field}
-                        className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                      >
-                        <option value="" disabled>
-                          Select a category
-                        </option>
-                        {AMENITIES.map((a) => (
-                          <option key={a.value} value={a.value} className="bg-zinc-900">
-                            {a.label}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5 p-6 pt-5">
+                {/* Name */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. The Red Lion" className="h-9" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* Address */}
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Address{" "}
-                      <span className="text-muted-foreground font-normal">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. 12 High Street, London" className="h-9" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {/* Category */}
+                <FormField
+                  control={form.control}
+                  name="amenity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <div className="flex gap-2">
+                          {AMENITIES.map((a) => (
+                            <button
+                              key={a.value}
+                              type="button"
+                              onClick={() => field.onChange(a.value)}
+                              className={`flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                                field.value === a.value
+                                  ? "border-primary bg-primary/10 text-foreground"
+                                  : "border-input bg-transparent text-muted-foreground hover:border-ring hover:text-foreground"
+                              }`}
+                            >
+                              <span className="text-xl">{a.icon}</span>
+                              <span>{a.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* Location picker */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Location</span>
-                <p className="text-xs text-muted-foreground">
-                  {lat != null && lon != null
-                    ? `Selected: ${lat.toFixed(5)}, ${lon.toFixed(5)}`
-                    : "Click the map to pick a location"}
-                </p>
-                <div className="h-52 w-full rounded-lg overflow-hidden border border-input">
-                  <LocationPickerMap
-                    lat={lat ?? null}
-                    lon={lon ?? null}
-                    initialCenter={initialCenter}
-                    onChange={(newLat, newLon) => {
-                      form.setValue("lat", newLat, { shouldValidate: true });
-                      form.setValue("lon", newLon, { shouldValidate: true });
-                    }}
-                  />
+                {/* Address */}
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Address{" "}
+                        <span className="text-muted-foreground font-normal">(optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 12 High Street, London" className="h-9" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Opening hours */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">
+                    Opening hours{" "}
+                    <span className="text-muted-foreground font-normal">(optional)</span>
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    {DAYS.map((day) => {
+                      const state = dayStates[day];
+                      return (
+                        <div key={day} className="flex items-center gap-2 min-h-8">
+                          <label className="flex items-center gap-2 w-16 shrink-0 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={state.enabled}
+                              onChange={(e) => setDay(day, { enabled: e.target.checked })}
+                              className="accent-primary"
+                            />
+                            <span className="text-sm text-foreground">{DAY_LABELS[day]}</span>
+                          </label>
+                          {state.enabled ? (
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <input
+                                type="time"
+                                value={state.open}
+                                onChange={(e) => setDay(day, { open: e.target.value })}
+                                className="h-8 rounded-lg border border-input bg-transparent px-2 py-1 text-sm text-foreground outline-none focus-visible:border-ring"
+                              />
+                              <span className="text-muted-foreground text-sm">–</span>
+                              <input
+                                type="time"
+                                value={state.close}
+                                onChange={(e) => setDay(day, { close: e.target.value })}
+                                className="h-8 rounded-lg border border-input bg-transparent px-2 py-1 text-sm text-foreground outline-none focus-visible:border-ring"
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Closed</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                {form.formState.errors.lat && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.lat.message}
+
+                {mutation.isError && (
+                  <p className="text-sm text-red-400 bg-red-950/60 border border-red-900 rounded-lg px-3 py-2">
+                    Failed to submit request. Please try again.
                   </p>
                 )}
-              </div>
 
-              {/* Opening hours */}
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">
-                  Opening hours{" "}
-                  <span className="text-muted-foreground font-normal">(optional)</span>
-                </span>
-                <div className="flex flex-col gap-1">
-                  {DAYS.map((day) => {
-                    const state = dayStates[day];
-                    return (
-                      <div key={day} className="flex items-center gap-2 min-h-8">
-                        <label className="flex items-center gap-2 w-16 shrink-0 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={state.enabled}
-                            onChange={(e) => setDay(day, { enabled: e.target.checked })}
-                            className="accent-yellow-400"
-                          />
-                          <span className="text-sm text-zinc-300">{DAY_LABELS[day]}</span>
-                        </label>
-                        {state.enabled ? (
-                          <div className="flex items-center gap-1.5 flex-1">
-                            <input
-                              type="time"
-                              value={state.open}
-                              onChange={(e) => setDay(day, { open: e.target.value })}
-                              className="h-8 rounded-lg border border-input bg-transparent px-2 py-1 text-sm text-foreground outline-none focus-visible:border-ring"
-                            />
-                            <span className="text-zinc-500 text-sm">–</span>
-                            <input
-                              type="time"
-                              value={state.close}
-                              onChange={(e) => setDay(day, { close: e.target.value })}
-                              className="h-8 rounded-lg border border-input bg-transparent px-2 py-1 text-sm text-foreground outline-none focus-visible:border-ring"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-xs text-zinc-600">Closed</span>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleClose(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={mutation.isPending}>
+                    {mutation.isPending ? "Submitting…" : "Submit request"}
+                  </Button>
                 </div>
-              </div>
-
-              {mutation.isError && (
-                <p className="text-sm text-red-400 bg-red-950/60 border border-red-900 rounded-lg px-3 py-2">
-                  Failed to submit request. Please try again.
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleClose(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={mutation.isPending}>
-                  {mutation.isPending ? "Submitting…" : "Submit request"}
-                </Button>
-              </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
