@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import Link from "next/link";
-import { useTheme } from "next-themes";
 import Map, {
   Marker,
   Popup,
@@ -13,25 +11,19 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase, type MapMarker, type Place } from "@/lib/supabase";
 
 // Above this zoom: individual markers
-const CLUSTER_THRESHOLD = 14;
+const CLUSTER_THRESHOLD = 11;
 // At this zoom and above: split 100+ clusters into 2 geographic halves
 const SPLIT_ZOOM = 9;
 // Cluster with this many pubs triggers a geographic split
 const LARGE_CLUSTER = 100;
 
 function gridSizeForZoom(zoom: number): number {
-  return 0.4 / Math.pow(2, zoom - 6);
+  return 0.8 / Math.pow(2, zoom - 6);
 }
 
 type ClusterItem =
   | { type: "pub"; pub: MapMarker }
-  | {
-      type: "cluster";
-      count: number;
-      lat: number;
-      lon: number;
-      dominantAmenity: string;
-    };
+  | { type: "cluster"; count: number; lat: number; lon: number };
 
 function centroid(pubs: MapMarker[]) {
   return {
@@ -129,7 +121,6 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
             count: half.pubs.length,
             lat: half.lat,
             lon: half.lon,
-            dominantAmenity: dominantAmenity(half.pubs),
           });
         }
       }
@@ -139,7 +130,6 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
         count: cell.pubs.length,
         lat: cell.lat,
         lon: cell.lon,
-        dominantAmenity: dominantAmenity(cell.pubs),
       });
     }
   }
@@ -151,78 +141,45 @@ const AMENITY_ICONS: Record<string, string> = {
   bar: "🥂",
   restaurant: "🍽️",
   cafe: "☕",
-  nightclub: "🎵",
-  biergarten: "🌳",
-  mixed: "📍",
-};
-
-const AMENITY_COLORS: Record<string, string> = {
-  pub: "#d97706",
-  bar: "#7c3aed",
-  restaurant: "#dc2626",
-  cafe: "#92400e",
-  nightclub: "#db2777",
-  biergarten: "#16a34a",
-  mixed: "#facc15",
+  nightclub: "🎶",
+  biergarten: "🌻",
 };
 
 function amenityIcon(amenity: string): string {
   return AMENITY_ICONS[amenity] ?? "📍";
 }
 
-function amenityColor(amenity: string): string {
-  return AMENITY_COLORS[amenity] ?? "#4b5563";
+function clusterColor(count: number): string {
+  if (count > 99) return "#7c3aed";
+  if (count > 50) return "#2563eb";
+  if (count > 20) return "#0891b2";
+  return "#0d9488";
 }
 
-function dominantAmenity(pubs: MapMarker[]): string {
-  const counts: Record<string, number> = {};
-  for (const p of pubs) {
-    counts[p.amenity] = (counts[p.amenity] ?? 0) + 1;
-  }
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const top = sorted[0];
-  if (!top) return "pub";
-  if (top[1] / pubs.length < 0.6) return "mixed";
-  return top[0];
+function clusterSize(count: number): number {
+  if (count > 99) return 72;
+  if (count > 50) return 64;
+  if (count > 20) return 56;
+  return 48;
 }
-
 
 interface Props {
   markers: MapMarker[];
-  focusedMarker?: { id: string; lat: number; lon: number } | null;
-  userLocation?: { lat: number; lon: number } | null;
-  active?: boolean;
+  focusedMarker?: { lat: number; lon: number } | null;
 }
 
-export default function MapComponent({
-  markers,
-  focusedMarker,
-  userLocation,
-  active,
-}: Props) {
-  const { resolvedTheme } = useTheme();
-  const mapStyle =
-    resolvedTheme === "dark"
-      ? `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_DARK}`
-      : `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_LIGHT}`;
-
+export default function MapComponent({ markers, focusedMarker }: Props) {
   const mapRef = useRef<MapRef>(null);
   const [zoom, setZoom] = useState(7);
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loadingPlace, setLoadingPlace] = useState(false);
-  const hasFocusedUser = useRef(false);
 
   const onZoom = useCallback((e: { viewState: { zoom: number } }) => {
     setZoom(e.viewState.zoom);
   }, []);
 
   const onMarkerClick = useCallback(async (marker: MapMarker) => {
-    mapRef.current?.flyTo({
-      center: [marker.lon, marker.lat],
-      zoom: Math.max(mapRef.current.getZoom(), 14),
-      duration: 800,
-    });
     setSelectedMarker(marker);
     setSelectedPlace(null);
     setLoadingPlace(true);
@@ -239,31 +196,10 @@ export default function MapComponent({
     if (!focusedMarker) return;
     mapRef.current?.flyTo({
       center: [focusedMarker.lon, focusedMarker.lat],
-      zoom: 18,
+      zoom: 16,
       duration: 1200,
     });
-    const marker = markers.find((m) => m.id === focusedMarker.id);
-    if (marker) onMarkerClick(marker);
-  }, [focusedMarker]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!userLocation || hasFocusedUser.current) return;
-    hasFocusedUser.current = true;
-    mapRef.current?.flyTo({
-      center: [userLocation.lon, userLocation.lat],
-      zoom: 13,
-      duration: 1500,
-    });
-  }, [userLocation]);
-
-  useEffect(() => {
-    if (!active) return;
-    // Mapbox measures canvas size when first mounted; if the container was
-    // hidden (display:none) at that point, the canvas is 0×0. Force a resize
-    // after the element becomes visible so the map fills its container.
-    const id = setTimeout(() => mapRef.current?.resize(), 50);
-    return () => clearTimeout(id);
-  }, [active]);
+  }, [focusedMarker]);
 
   const snappedZoom = Math.round(zoom);
   const items = useMemo(
@@ -280,7 +216,7 @@ export default function MapComponent({
         zoom: 5.7,
       }}
       style={{ width: "100%", height: "100%" }}
-      mapStyle={mapStyle}
+      mapStyle={`mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID}`}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
       onZoom={onZoom}
       minZoom={5}
@@ -289,12 +225,13 @@ export default function MapComponent({
         setSelectedPlace(null);
       }}
     >
-      {/* <NavigationControl position="top-right" /> */}
+      <NavigationControl position="top-right" />
 
       {items.map((item, i) => {
         if (item.type === "cluster") {
+          const size = clusterSize(item.count);
+          const bg = clusterColor(item.count);
           const label = item.count > 99 ? "99+" : `${item.count}`;
-          const bg = amenityColor(item.dominantAmenity);
           return (
             <Marker
               key={`cluster-${i}`}
@@ -302,35 +239,39 @@ export default function MapComponent({
               latitude={item.lat}
               anchor="center"
             >
-              <div className="relative w-[34px] h-[34px]">
-                <div
-                  style={{
-                    background: bg,
-                    boxShadow: `0 0 0 4px ${bg}55`,
-                  }}
-                  className="w-[34px] h-[34px] rounded-xl flex items-center justify-center text-[15px] cursor-pointer"
-                >
-                  {amenityIcon(item.dominantAmenity)}
-                </div>
-                <div
-                  className={`absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
-                >
-                  {label}
-                </div>
+              <div
+                style={{
+                  width: size,
+                  height: size,
+                  background: bg,
+                  borderRadius: "50%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontWeight: 700,
+                  fontSize: 11,
+                  fontFamily: "sans-serif",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                  border: "3px solid rgba(255,255,255,0.8)",
+                  cursor: "pointer",
+                }}
+              >
+                <span>{label}</span>
+                <span style={{ fontSize: 9 }}>places</span>
               </div>
             </Marker>
           );
         }
 
         const pub = item.pub;
-        const isSelected = selectedMarker?.id === pub.id;
-        const bg = amenityColor(pub.amenity);
         return (
           <Marker
             key={pub.id}
             longitude={pub.lon}
             latitude={pub.lat}
-            anchor="center"
+            anchor="bottom"
             onClick={(e) => {
               e.originalEvent.stopPropagation();
               onMarkerClick(pub);
@@ -338,31 +279,30 @@ export default function MapComponent({
           >
             <div
               style={{
-                background: bg,
-                boxShadow: isSelected
-                  ? `0 0 0 6px ${bg}77`
-                  : `0 0 0 4px ${bg}55`,
+                background: "#6b7280",
+                color: "white",
+                borderRadius: "50% 50% 50% 0",
+                transform: "rotate(-45deg)",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: 11,
+                fontFamily: "sans-serif",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                border: "2px solid white",
+                cursor: "pointer",
               }}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center text-[16px] cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
             >
-              {amenityIcon(pub.amenity)}
+              <span style={{ transform: "rotate(45deg)" }}>
+                {amenityIcon(pub.amenity)}
+              </span>
             </div>
           </Marker>
         );
       })}
-
-      {userLocation && (
-        <Marker
-          longitude={userLocation.lon}
-          latitude={userLocation.lat}
-          anchor="center"
-        >
-          <div className="relative flex items-center justify-center w-6 h-6">
-            <div className="absolute w-6 h-6 rounded-full bg-blue-400 opacity-50 animate-ping" />
-            <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-lg z-10" />
-          </div>
-        </Marker>
-      )}
 
       {selectedMarker && (
         <Popup
@@ -375,48 +315,55 @@ export default function MapComponent({
             setSelectedPlace(null);
           }}
           closeOnClick={true}
-          closeButton={false}
         >
-          <Link href={`/places/${selectedMarker.id}`} className="flex flex-col gap-1 min-w-[180px]">
-            <p className="font-bold text-xs text-white truncate">
-              {selectedMarker.name}
-            </p>
-            {!loadingPlace && (() => {
-              const rating = (selectedPlace?.app_review_count ?? 0) > 0
-                ? { value: selectedPlace!.app_rating ?? 0, count: selectedPlace!.app_review_count }
-                : selectedPlace?.google_rating
-                ? { value: selectedPlace.google_rating, count: selectedPlace.google_review_count }
-                : null;
-              return rating ? (
-                <div className="flex items-center gap-1.5">
-                  <div className="flex gap-[2px]">
-                    {Array.from({ length: 5 }).map((_, i) => {
-                      const full = rating.value >= i + 1;
-                      const half = !full && rating.value >= i + 0.5;
-                      return (
-                        <span
-                          key={i}
-                          className={`inline-flex items-center justify-center w-[14px] h-[14px] rounded text-[9px] font-bold ${
-                            full
-                              ? "bg-yellow-400 text-zinc-900"
-                              : half
-                              ? "bg-yellow-400/60 text-zinc-900"
-                              : "bg-zinc-700 text-zinc-500"
-                          }`}
-                        >
-                          ★
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <span className="text-xs font-bold text-white">{rating.value.toFixed(1)}</span>
-                  {rating.count != null && (
-                    <span className="text-xs text-zinc-400">({rating.count} reviews)</span>
+          <div className="min-w-[180px]">
+            <p className="font-semibold text-base">{selectedMarker.name}</p>
+            {loadingPlace && (
+              <p className="text-xs text-zinc-400 mt-1">Loading details...</p>
+            )}
+            {selectedPlace && (
+              <>
+                {selectedPlace.address && (
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {selectedPlace.address}
+                  </p>
+                )}
+                <div className="flex gap-3 mt-2 text-sm">
+                  {selectedPlace.google_rating && (
+                    <span>
+                      ⭐ {selectedPlace.google_rating}{" "}
+                      <span className="text-zinc-400 text-xs">
+                        ({selectedPlace.google_review_count} Google)
+                      </span>
+                    </span>
+                  )}
+                  {selectedPlace.app_review_count > 0 && (
+                    <span>
+                      🍺 {selectedPlace.app_rating.toFixed(1)}{" "}
+                      <span className="text-zinc-400 text-xs">
+                        ({selectedPlace.app_review_count} app)
+                      </span>
+                    </span>
                   )}
                 </div>
-              ) : null;
-            })()}
-          </Link>
+                {selectedPlace.opening_hours && (
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {selectedPlace.opening_hours}
+                  </p>
+                )}
+                {selectedPlace.website && (
+                  <a
+                    href={selectedPlace.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:underline mt-1 block"
+                  >
+                    Website
+                  </a>
+                )}
+              </>
+            )}
+          </div>
         </Popup>
       )}
     </Map>

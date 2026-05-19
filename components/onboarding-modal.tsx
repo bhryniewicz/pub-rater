@@ -52,9 +52,7 @@ export default function OnboardingModal({ userId, onDone }: Props) {
               onChange={() => toggle("pub_preference")}
               className="w-4 h-4 rounded accent-primary"
             />
-            <span className="text-sm font-medium text-foreground">
-              🍺 Pubs
-            </span>
+            <span className="text-sm font-medium text-foreground">🍺 Pubs</span>
           </label>
 
           <label className="flex items-center gap-3 cursor-pointer group">
@@ -64,9 +62,7 @@ export default function OnboardingModal({ userId, onDone }: Props) {
               onChange={() => toggle("bar_preference")}
               className="w-4 h-4 rounded accent-primary"
             />
-            <span className="text-sm font-medium text-foreground">
-              🥂 Bars
-            </span>
+            <span className="text-sm font-medium text-foreground">🥂 Bars</span>
           </label>
         </div>
 
