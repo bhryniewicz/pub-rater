@@ -39,7 +39,7 @@ const AMENITY_COLORS: Record<string, string> = {
   biergarten: "#16a34a",
 };
 
-const Map = dynamic(() => import("@/components/map"), { ssr: false });
+const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 
 function haversineKm(
   lat1: number,
