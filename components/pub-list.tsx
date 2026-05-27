@@ -10,6 +10,7 @@ import { MdDoorFront } from "react-icons/md";
 import { LuMap } from "react-icons/lu";
 import { BsBookmark, BsBookmarkFill } from "react-icons/bs";
 import { Switch } from "@/components/ui/switch";
+import { motion, AnimatePresence } from "framer-motion";
 
 function StarRating({
   rating,
@@ -174,6 +175,7 @@ export default function PubList({
         ref={listRef}
         className="flex-1 overflow-y-auto flex flex-col gap-4 md:gap-3 md:pr-4 pt-0"
       >
+        <AnimatePresence initial={false}>
         {markers.map((marker, index) => {
           const openNow = marker.opening_hours
             ? isOpenNow(marker.opening_hours)
@@ -183,8 +185,12 @@ export default function PubList({
             : null;
           const isLiked = likedPlaces.includes(marker.id);
           return (
-            <li
+            <motion.li
               key={marker.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.4), ease: "easeOut" }}
               className="shrink-0 rounded-2xl overflow-hidden bg-card hover:shadow-sm hover:shadow-black/10 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:overflow-visible"
             >
               {/* Image — full-width on mobile, fixed square on desktop */}
@@ -312,7 +318,6 @@ export default function PubList({
                     </span>
                   </div>
                 </Link>
-
               </div>
 
               {/* Desktop: action icons — top-right corner */}
@@ -344,9 +349,10 @@ export default function PubList({
                   </button>
                 )}
               </div>
-            </li>
+            </motion.li>
           );
         })}
+        </AnimatePresence>
 
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="py-4 text-center">

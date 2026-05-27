@@ -14,6 +14,7 @@ import {
   CommandEmpty,
 } from "@/components/ui/command";
 import { LuSearch, LuSlidersHorizontal, LuCrosshair } from "react-icons/lu";
+import { motion, AnimatePresence } from "framer-motion";
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",

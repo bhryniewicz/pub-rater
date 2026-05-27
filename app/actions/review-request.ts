@@ -16,6 +16,35 @@ export async function approveRequest(id: string): Promise<void> {
 
   if (fetchError || !req) throw fetchError ?? new Error('Request not found')
 
+  if (req.type === 'owner_claim') {
+    // Assign owner_id on the existing marker
+    const { error: ownerError } = await supabase
+      .from('markers')
+      .update({ owner_id: req.requested_by })
+      .eq('id', req.marker_id)
+
+    if (ownerError) throw ownerError
+
+    const { error: updateError } = await supabase
+      .from('location_requests')
+      .update({ status: 'approved' })
+      .eq('id', id)
+
+    if (updateError) throw updateError
+
+    await supabase.from('notifications').insert({
+      user_id: req.requested_by,
+      type: 'approved',
+      request_type: 'owner_claim',
+      request_id: id,
+      request_name: req.description ?? 'Ownership claim',
+      marker_id: req.marker_id,
+    })
+
+    return
+  }
+
+  // place_request: create marker + place
   const { data: marker, error: markerError } = await supabase
     .from('markers')
     .insert({
@@ -47,6 +76,7 @@ export async function approveRequest(id: string): Promise<void> {
   await supabase.from('notifications').insert({
     user_id: req.requested_by,
     type: 'approved',
+    request_type: 'place_request',
     request_id: id,
     request_name: req.name,
     marker_id: marker.id,
@@ -60,7 +90,7 @@ export async function rejectRequest(id: string): Promise<void> {
 
   const { data: req, error: fetchError } = await supabase
     .from('location_requests')
-    .select('requested_by, name')
+    .select('requested_by, name, type, description')
     .eq('id', id)
     .single()
 
@@ -73,9 +103,13 @@ export async function rejectRequest(id: string): Promise<void> {
 
   if (error) throw error
 
+  // No rejection notification for owner claims
+  if (req.type === 'owner_claim') return
+
   await supabase.from('notifications').insert({
     user_id: req.requested_by,
     type: 'rejected',
+    request_type: 'place_request',
     request_id: id,
     request_name: req.name,
     marker_id: null,

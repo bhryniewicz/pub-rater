@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +11,9 @@ import { isOpenNow, DAY_KEYS, type OpeningHours } from "@/lib/opening-hours";
 import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { ReviewFormSchema, type ReviewFormValues } from "@/lib/schemas";
-import { LuArrowLeft, LuCopy, LuNavigation } from "react-icons/lu";
+import { LuCopy, LuNavigation, LuThumbsUp, LuChevronRight, LuPencil } from "react-icons/lu";
+import { ClaimForm } from "./claim-form";
+import { EditPlaceDialog } from "./edit-place-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -21,13 +21,8 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
-const PlaceMap = dynamic(() => import("@/components/place-map"), {
-  ssr: false,
-});
 
 type MarkerInfo = {
   id: string;
@@ -35,22 +30,14 @@ type MarkerInfo = {
   amenity: string;
   lat: number;
   lon: number;
-};
-
-const AMENITY_ICONS: Record<string, string> = {
-  pub: "🍺",
-  bar: "🥂",
-  restaurant: "🍽️",
-  cafe: "☕",
-  nightclub: "🎶",
-  biergarten: "🌻",
+  owner_id: string | null;
 };
 
 async function fetchPlaceData(markerId: string) {
   const [markerRes, placeRes, reviewsRes] = await Promise.all([
     supabase
       .from("markers")
-      .select("id, name, amenity, lat, lon")
+      .select("id, name, amenity, lat, lon, owner_id")
       .eq("id", markerId)
       .single(),
     supabase.from("places").select("*, short_code").eq("marker_id", markerId).single(),
@@ -70,19 +57,44 @@ async function fetchPlaceData(markerId: string) {
   };
 }
 
+function avatarInitials(email: string): string {
+  return email.split("@")[0].slice(0, 2).toUpperCase();
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+const DAY_LABELS: Record<string, string> = {
+  mo: "Monday",
+  tu: "Tuesday",
+  we: "Wednesday",
+  th: "Thursday",
+  fr: "Friday",
+  sa: "Saturday",
+  su: "Sunday",
+};
+
 export default function PlaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isOwner, isAdmin } = useUser();
   const { coords: userLocation } = useGeolocation();
   const queryClient = useQueryClient();
   const [hoverRating, setHoverRating] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const reviewForm = useForm<ReviewFormValues>({
     resolver: zodResolver(ReviewFormSchema),
     defaultValues: { comment: "", rating: 0 },
   });
+
+  const commentText = reviewForm.watch("comment");
 
   function copyLink() {
     const url = place?.short_code
@@ -95,9 +107,7 @@ export default function PlaceDetailPage() {
 
   function navigateToPlace(lat: number, lon: number) {
     const destination = `${lat},${lon}`;
-    const origin = userLocation
-      ? `${userLocation.lat},${userLocation.lon}`
-      : "";
+    const origin = userLocation ? `${userLocation.lat},${userLocation.lon}` : "";
     const url = `https://www.google.com/maps/dir/?api=1${origin ? `&origin=${origin}` : ""}&destination=${destination}&travelmode=walking`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
@@ -151,314 +161,453 @@ export default function PlaceDetailPage() {
 
   const { marker, place, reviews } = data;
 
-  console.log(place?.opening_hours, "hours");
+  const avgRating =
+    place?.app_rating ??
+    (reviews.length
+      ? Math.round((reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length) * 10) / 10
+      : null);
+
+  const ratingCounts = [5, 4, 3, 2, 1].map(
+    (star) => reviews.filter((r) => r.rating === star).length
+  );
+  const maxCount = Math.max(...ratingCounts, 1);
+
+  const now = new Date();
+  const jsDay = now.getDay();
+  const todayKey = DAY_KEYS[jsDay === 0 ? 6 : jsDay - 1];
 
   return (
     <main className="flex-1 overflow-y-auto bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <LuArrowLeft className="w-4 h-4" />
-          Back
-        </Link>
+      <div className="max-w-6xl mx-auto px-6 py-8">
 
-        <div className="flex gap-4 mb-8">
-          <div className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-secondary">
-            {place?.thumbnail ? (
-              <Image
-                src={place.thumbnail}
-                alt={marker.name}
-                fill
-                className="object-cover"
-              />
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6">
+          <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
+          <LuChevronRight className="w-3 h-3" />
+          {place?.city && (
+            <>
+              <span>{place.city}</span>
+              <LuChevronRight className="w-3 h-3" />
+            </>
+          )}
+          <span className="text-foreground font-medium">{marker.name}</span>
+        </nav>
+
+        {/* Hero */}
+        <div className="grid grid-cols-5 gap-6 mb-8 bg-card border border-border rounded-2xl p-8">
+          {/* Left: title + tags */}
+          <div className="col-span-3 flex flex-col gap-4">
+            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              {marker.amenity}
+            </div>
+            <h1 className="text-4xl font-black text-foreground leading-tight">{marker.name}</h1>
+            {/* No description field in DB — placeholder container */}
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              No description yet.
+            </p>
+            {/* Feature tags — no DB field, placeholder */}
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 rounded-full bg-secondary border border-border text-xs font-medium text-muted-foreground capitalize">
+                {marker.amenity}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: rating */}
+          <div className="col-span-2">
+            <div className="flex items-end gap-3 mb-3">
+              <span className="text-6xl font-black text-primary leading-none">
+                {avgRating != null ? avgRating.toFixed(1) : "—"}
+              </span>
+              <div className="pb-1">
+                <div className="flex gap-0.5 mb-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span
+                      key={s}
+                      className={`text-lg ${avgRating != null && avgRating >= s ? "text-primary" : "text-muted"}`}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
+            {/* Rating breakdown */}
+            <div className="space-y-1.5">
+              {[5, 4, 3, 2, 1].map((star, i) => (
+                <div key={star} className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-4">{star}★</span>
+                  <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${(ratingCounts[i] / maxCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-4 text-right">
+                    {ratingCounts[i]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Main content grid */}
+        <div className="grid grid-cols-5 gap-6">
+
+          {/* Left: comments */}
+          <div className="col-span-3">
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                  The Conversation
+                </p>
+                <h2 className="text-3xl font-black text-foreground">Comments</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{reviews.length}</p>
+              </div>
+              <select className="text-xs font-medium bg-secondary border border-border rounded-lg px-3 py-2 text-foreground">
+                <option>Newest first</option>
+                <option>Oldest first</option>
+                <option>Top rated</option>
+              </select>
+            </div>
+
+            {/* Comment form */}
+            {user ? (
+              <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+                <div className="flex gap-3 mb-3">
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary-foreground">
+                      {avatarInitials(user.email ?? "?")}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">
+                      You&apos;re posting as {user.email?.split("@")[0]}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Pick a rating and tell people about the place</p>
+                  </div>
+                </div>
+
+                <Form {...reviewForm}>
+                  <form
+                    onSubmit={reviewForm.handleSubmit((values) => commentMutation.mutate(values))}
+                    className="space-y-3"
+                  >
+                    <FormField
+                      control={reviewForm.control}
+                      name="rating"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => field.onChange(star)}
+                                onMouseEnter={() => setHoverRating(star)}
+                                onMouseLeave={() => setHoverRating(0)}
+                                className="text-2xl leading-none transition-colors"
+                              >
+                                <span
+                                  className={
+                                    (hoverRating || field.value) >= star
+                                      ? "text-primary"
+                                      : "text-muted-foreground/30"
+                                  }
+                                >
+                                  ★
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={reviewForm.control}
+                      name="comment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              placeholder="How were the beers, the crowd, the kitchen? Tell us everything…"
+                              rows={4}
+                              className="resize-none text-sm"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {commentMutation.isError && (
+                      <p className="text-xs text-red-500">Failed to post comment. Please try again.</p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                        Markdown supported · {commentText.length}/500
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="px-4 py-2 text-sm font-medium border border-border rounded-xl text-foreground hover:bg-secondary transition-colors"
+                        >
+                          Save draft
+                        </button>
+                        <Button type="submit" disabled={commentMutation.isPending}>
+                          {commentMutation.isPending ? "Posting…" : "Post comment"}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </Form>
+              </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl">
-                {AMENITY_ICONS[marker.amenity] ?? "🍺"}
+              <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+                <p className="text-sm text-muted-foreground">
+                  <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>{" "}
+                  to leave a comment.
+                </p>
+              </div>
+            )}
+
+            {/* Reviews list */}
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+            ) : (
+              <div className="space-y-3">
+                {reviews.map((review) => (
+                  <ReviewCard key={review.id} review={review} />
+                ))}
+              </div>
+            )}
+
+            {reviews.length > 0 && (
+              <div className="mt-6 text-center">
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  Load more comments ↓
+                </button>
               </div>
             )}
           </div>
-          <div className="flex flex-col justify-center gap-1.5 min-w-0">
-            <h1 className="text-xl font-black text-foreground leading-tight">
-              {marker.name}
-            </h1>
-            <span className="inline-flex items-center gap-1 w-fit px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary border border-border text-muted-foreground capitalize">
-              {AMENITY_ICONS[marker.amenity] && (
-                <span>{AMENITY_ICONS[marker.amenity]}</span>
-              )}
-              {marker.amenity}
-            </span>
-          </div>
-        </div>
 
-        <div className="mb-8 rounded-xl overflow-hidden border border-border h-56">
-          <PlaceMap
-            lat={marker.lat}
-            lon={marker.lon}
-            amenity={marker.amenity}
-            userLocation={userLocation}
-          />
-        </div>
+          {/* Right: sidebar */}
+          <div className="col-span-2 space-y-4">
 
-        <div className="flex gap-3 mb-8">
-          <button
-            onClick={copyLink}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
-          >
-            <LuCopy className="w-4 h-4 shrink-0" />
-            {copied ? "Copied!" : "Copy link"}
-          </button>
-          <button
-            onClick={() => navigateToPlace(marker.lat, marker.lon)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
-          >
-            <LuNavigation className="w-4 h-4 shrink-0" />
-            {userLocation ? "Navigate from my location" : "Navigate"}
-          </button>
-        </div>
-
-        {place && (
-          <section className="mb-8 space-y-3">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-              Details
-            </h2>
-            <div className="bg-card border border-border rounded-xl divide-y divide-border">
-              {place.address && (
-                <Detail label="Address" value={place.address} />
-              )}
-              {place.city && <Detail label="City" value={place.city} />}
-              {place.phone && <Detail label="Phone" value={place.phone} />}
-              {place.website && (
-                <Detail
+            {/* Place details */}
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                Place Details
+              </h3>
+              <div className="space-y-3">
+                <SidebarRow label="Address" value={place?.address} />
+                <SidebarRow label="City" value={place?.city} />
+                <SidebarRow label="Phone" value={place?.phone} />
+                <SidebarRow
                   label="Website"
                   value={
-                    <a
-                      href={place.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline truncate"
-                    >
-                      {place.website}
-                    </a>
+                    place?.website ? (
+                      <a
+                        href={place.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline truncate"
+                      >
+                        {place.website.replace(/^https?:\/\//, "")}
+                      </a>
+                    ) : null
                   }
                 />
-              )}
-              {place.opening_hours && (
-                <OpeningHoursTable hours={place.opening_hours} />
-              )}
-              {place.google_rating != null && (
-                <Detail
-                  label="Google rating"
-                  value={`${place.google_rating} ★ (${place.google_review_count ?? 0} reviews)`}
-                />
+                {/* Fields not yet in DB — containers shown empty */}
+                <SidebarRow label="Instagram" value={null} />
+                <SidebarRow label="Price" value={null} />
+                <SidebarRow label="Founded" value={null} />
+                <SidebarRow label="Capacity" value={null} />
+                <SidebarRow label="On Tap" value={null} />
+              </div>
+            </div>
+
+            {/* Hours */}
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Hours
+                </h3>
+                {place?.opening_hours && (
+                  <OpenStatusBadge hours={place.opening_hours} />
+                )}
+              </div>
+              {place?.opening_hours ? (
+                <div className="space-y-1">
+                  {DAY_KEYS.map((key) => {
+                    const day = place.opening_hours![key];
+                    const isToday = key === todayKey;
+                    return (
+                      <div
+                        key={key}
+                        className={`flex items-center justify-between py-1.5 px-2 rounded-lg ${isToday ? "bg-secondary font-semibold text-foreground" : "text-muted-foreground"}`}
+                      >
+                        <span className="text-xs w-24">{DAY_LABELS[key]}</span>
+                        <span className="text-xs">
+                          {day ? `${day.open} – ${day.close ?? "late"}` : "Closed"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No hours available.</p>
               )}
             </div>
-          </section>
-        )}
 
-        <section>
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
-            Comments ({reviews.length})
-          </h2>
+            {/* Amenities */}
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                Amenities
+              </h3>
+              <p className="text-xs text-muted-foreground">No amenities listed yet.</p>
+            </div>
 
-          {user ? (
-            <Form {...reviewForm}>
-              <form
-                onSubmit={reviewForm.handleSubmit((values) =>
-                  commentMutation.mutate(values)
-                )}
-                className="mb-6 space-y-4"
+            {/* Get there */}
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                Get There
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigateToPlace(marker.lat, marker.lon)}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+                >
+                  <LuNavigation className="w-4 h-4 shrink-0" />
+                  Navigate
+                </button>
+                <button
+                  onClick={copyLink}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  <LuCopy className="w-4 h-4 shrink-0" />
+                  {copied ? "Copied!" : "Copy link"}
+                </button>
+              </div>
+            </div>
+
+            {/* Edit button — admin always, owner only if they own this place */}
+            {(isAdmin || (isOwner && marker.owner_id === user?.id)) && (
+              <button
+                onClick={() => setEditOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
               >
-                <FormField
-                  control={reviewForm.control}
-                  name="rating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rating</FormLabel>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => field.onChange(star)}
-                            onMouseEnter={() => setHoverRating(star)}
-                            onMouseLeave={() => setHoverRating(0)}
-                            className="text-2xl leading-none transition-colors"
-                          >
-                            <span
-                              className={
-                                (hoverRating || field.value) >= star
-                                  ? "text-primary"
-                                  : "text-muted"
-                              }
-                            >
-                              ★
-                            </span>
-                          </button>
-                        ))}
-                        {field.value > 0 && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            {field.value}/5
-                          </span>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <LuPencil className="w-4 h-4 shrink-0" />
+                Edit place details
+              </button>
+            )}
 
-                <FormField
-                  control={reviewForm.control}
-                  name="comment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Comment</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Write a comment..."
-                          rows={3}
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Claim form — owner/admin only if place has no owner */}
+            {(isOwner || isAdmin) && !marker.owner_id && (
+              <ClaimForm markerId={marker.id} />
+            )}
 
-                {commentMutation.isError && (
-                  <p className="text-xs text-red-500">
-                    Failed to post comment. Please try again.
-                  </p>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={commentMutation.isPending}
-                >
-                  {commentMutation.isPending ? "Posting…" : "Post comment"}
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <p className="text-sm text-muted-foreground mb-6">
-              <Link href="/" className="text-primary hover:underline">
-                Sign in
-              </Link>{" "}
-              to leave a comment.
-            </p>
-          )}
-
-          {reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No comments yet. Be the first!
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {reviews.map((review) => (
-                <li
-                  key={review.id}
-                  className="bg-card border border-border rounded-xl px-4 py-3"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {review.user_email ?? "Anonymous"}
-                    </span>
-                    {review.created_at && (
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                  {review.rating != null && (
-                    <div className="flex items-center gap-0.5 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span
-                          key={star}
-                          className={`text-base leading-none ${review.rating! >= star ? "text-primary" : "text-muted"}`}
-                        >
-                          ★
-                        </span>
-                      ))}
-                      <span className="text-xs text-muted-foreground ml-1">
-                        {review.rating}/5
-                      </span>
-                    </div>
-                  )}
-                  {review.comment && (
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {review.comment}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+          </div>
+        </div>
       </div>
+
+      {editOpen && (
+        <EditPlaceDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          markerId={marker.id}
+          markerName={marker.name}
+          markerAmenity={marker.amenity}
+          place={place}
+        />
+      )}
     </main>
   );
 }
 
-function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+function ReviewCard({ review }: { review: Review }) {
+  const username = review.user_email?.split("@")[0] ?? "Anonymous";
+  const initials = review.user_email ? avatarInitials(review.user_email) : "?";
+
   return (
-    <div className="flex items-start gap-4 px-4 py-3">
-      <span className="text-xs font-medium text-muted-foreground w-24 shrink-0 pt-0.5">
-        {label}
-      </span>
-      <span className="text-sm text-foreground min-w-0 break-words">{value}</span>
+    <div className="bg-card border border-border rounded-2xl px-5 py-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+            <span className="text-xs font-bold text-foreground">{initials}</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{username}</p>
+            {review.created_at && (
+              <p className="text-xs text-muted-foreground">{formatDate(review.created_at)}</p>
+            )}
+          </div>
+        </div>
+        {review.rating != null && (
+          <div className="flex items-center gap-1">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <span
+                  key={s}
+                  className={`text-sm ${review.rating! >= s ? "text-primary" : "text-muted-foreground/30"}`}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+            <span className="text-xs font-bold text-muted-foreground ml-1">{review.rating}.0</span>
+          </div>
+        )}
+      </div>
+
+      {review.comment && (
+        <p className="text-sm text-foreground leading-relaxed mb-3">{review.comment}</p>
+      )}
+
+      {/* Tags — no DB field, container shown empty */}
+      <div className="flex flex-wrap gap-1.5 mb-3" />
+
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <button className="flex items-center gap-1 hover:text-foreground transition-colors">
+          <LuThumbsUp className="w-3.5 h-3.5" />
+          Helpful
+        </button>
+        <button className="hover:text-foreground transition-colors">Reply</button>
+        <button className="hover:text-foreground transition-colors ml-auto">Report</button>
+      </div>
     </div>
   );
 }
 
-const DAY_LABELS: Record<string, string> = {
-  mo: "Monday",
-  tu: "Tuesday",
-  we: "Wednesday",
-  th: "Thursday",
-  fr: "Friday",
-  sa: "Saturday",
-  su: "Sunday",
-};
-
-function OpeningHoursTable({ hours }: { hours: OpeningHours }) {
-  const now = new Date();
-  const jsDay = now.getDay();
-  const todayKey = DAY_KEYS[jsDay === 0 ? 6 : jsDay - 1];
-  const open = isOpenNow(hours);
-
+function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-muted-foreground">Hours</span>
-        <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full ${open ? "bg-green-500/15 text-green-600" : "bg-muted text-muted-foreground"}`}
-        >
-          {open ? "Open now" : "Closed now"}
-        </span>
-      </div>
-      <div className="space-y-1">
-        {DAY_KEYS.map((key) => {
-          const day = hours[key];
-          const isToday = key === todayKey;
-          return (
-            <div
-              key={key}
-              className={`flex items-center justify-between py-1 ${isToday ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              <span
-                className={`text-xs w-24 ${isToday ? "font-bold" : "font-medium"}`}
-              >
-                {DAY_LABELS[key]}
-              </span>
-              <span className="text-xs">
-                {day ? `${day.open} – ${day.close ?? "late"}` : "Closed"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="flex items-start gap-4">
+      <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground w-20 shrink-0 pt-0.5">
+        {label}
+      </span>
+      <span className="text-sm text-foreground min-w-0">
+        {value ?? <span className="text-muted-foreground/50">—</span>}
+      </span>
     </div>
+  );
+}
+
+function OpenStatusBadge({ hours }: { hours: OpeningHours }) {
+  const open = isOpenNow(hours);
+  return (
+    <span
+      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${open ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${open ? "bg-green-500" : "bg-muted-foreground"}`} />
+      {open ? "Open" : "Closed"}
+    </span>
   );
 }

@@ -9,14 +9,21 @@ import { useUser } from "@/hooks/use-user";
 type Notification = {
   id: string;
   type: "approved" | "rejected";
+  request_type: "place_request" | "owner_claim";
   request_name: string;
   marker_id: string | null;
 };
 
 function fireToast(n: Notification, onView: (markerId: string) => void) {
+  const label =
+    n.request_type === "owner_claim" ? "ownership claim" : "place request";
+
   if (n.type === "approved") {
-    toast.success(`"${n.request_name}" was approved`, {
-      description: "Your place request has been accepted by an admin.",
+    toast.success(`Your ${label} was approved`, {
+      description:
+        n.request_type === "owner_claim"
+          ? "You are now the owner of this place."
+          : "Your place has been accepted by an admin.",
       ...(n.marker_id
         ? {
             action: {
@@ -27,8 +34,8 @@ function fireToast(n: Notification, onView: (markerId: string) => void) {
         : {}),
     });
   } else {
-    toast.error(`"${n.request_name}" was rejected`, {
-      description: "Your place request was not accepted by an admin.",
+    toast.error(`Your ${label} was rejected`, {
+      description: "The request was not accepted by an admin.",
     });
   }
 }
@@ -45,7 +52,7 @@ export function NotificationWatcher() {
     async function showUnread() {
       const { data } = await supabase
         .from("notifications")
-        .select("id, type, request_name, marker_id")
+        .select("id, type, request_type, request_name, marker_id")
         .eq("user_id", userId)
         .eq("read", false)
         .order("created_at", { ascending: true });

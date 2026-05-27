@@ -210,18 +210,62 @@ export type ReviewFormValues = z.infer<typeof ReviewFormSchema>
 // Location request (submitted by users, reviewed by admin)
 export const LocationRequestStatus = z.enum(['pending', 'approved', 'rejected'])
 
-export const LocationRequestSchema = z.object({
+const LocationRequestBase = z.object({
   id: z.string(),
+  status: LocationRequestStatus,
+  requested_by: z.string().nullable(),
+  created_at: z.string(),
+  description: z.string().nullable(),
+})
+
+export const PlaceRequestSchema = LocationRequestBase.extend({
+  type: z.literal('place_request'),
   name: z.string(),
   amenity: z.string(),
   address: z.string().nullable(),
   lat: z.number(),
   lon: z.number(),
   opening_hours: OpeningHoursSchema.nullable(),
-  status: LocationRequestStatus,
-  requested_by: z.string().nullable(),
-  created_at: z.string(),
+  marker_id: z.string().nullable(),
+})
+
+export const OwnerClaimSchema = LocationRequestBase.extend({
+  type: z.literal('owner_claim'),
+  marker_id: z.string(),
+  name: z.string().nullable(),
+  amenity: z.string().nullable(),
+  address: z.string().nullable(),
+  lat: z.number().nullable(),
+  lon: z.number().nullable(),
+  opening_hours: OpeningHoursSchema.nullable(),
+})
+
+export const LocationRequestSchema = z.discriminatedUnion('type', [
+  PlaceRequestSchema,
+  OwnerClaimSchema,
+])
+
+export const ClaimPlaceSchema = z.object({
+  marker_id: z.string(),
+  description: z.string().trim().min(1, 'Description is required').max(1000, 'Max 1000 characters'),
+})
+
+export const EditPlaceSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(200, 'Max 200 characters'),
+  amenity: z.enum(['pub', 'bar', 'restaurant', 'cafe', 'nightclub', 'biergarten'] as const, {
+    errorMap: () => ({ message: 'Category is required' }),
+  }),
+  address: z.string().trim().nullable(),
+  city: z.string().trim().nullable(),
+  phone: z.string().trim().nullable(),
+  website: z.string().trim().nullable(),
+  opening_hours: OpeningHoursSchema.nullable(),
+  thumbnail: z.string().trim().nullable(),
 })
 
 export type LocationRequest = z.infer<typeof LocationRequestSchema>
+export type PlaceRequest = z.infer<typeof PlaceRequestSchema>
+export type OwnerClaim = z.infer<typeof OwnerClaimSchema>
 export type LocationRequestStatusType = z.infer<typeof LocationRequestStatus>
+export type ClaimPlaceValues = z.infer<typeof ClaimPlaceSchema>
+export type EditPlaceValues = z.infer<typeof EditPlaceSchema>

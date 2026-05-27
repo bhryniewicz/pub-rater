@@ -8,6 +8,7 @@ import { useGeolocation } from "@/context/geolocation-context";
 import { SearchBar } from "@/components/search-bar";
 import { AddPlaceDialog } from "@/components/add-place-dialog";
 import { LuUser, LuBuilding2, LuSun, LuMoon } from "react-icons/lu";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
   const { user, isAdmin, isOwner } = useUser();
@@ -31,13 +32,36 @@ export function Navbar() {
   }, [zoneOpen]);
 
   const themeToggle = (
-    <button
+    <motion.button
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label="Toggle theme"
-      className="h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
+      whileTap={{ scale: 0.88 }}
+      className="h-11 w-11 relative flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors overflow-hidden"
     >
-      {mounted && resolvedTheme === "dark" ? <LuSun size={18} /> : <LuMoon size={18} />}
-    </button>
+      <AnimatePresence mode="wait" initial={false}>
+        {mounted && resolvedTheme === "dark" ? (
+          <motion.span
+            key="sun"
+            initial={{ rotate: -90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            exit={{ rotate: 90, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <LuSun size={18} />
+          </motion.span>
+        ) : (
+          <motion.span
+            key="moon"
+            initial={{ rotate: 90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            exit={{ rotate: -90, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <LuMoon size={18} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 
   const addPlaceButton = (

@@ -322,7 +322,9 @@ export function ProfileForm({
                     className="rounded-xl border border-border bg-card px-4 py-4"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-foreground">{req.name}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {req.type === "owner_claim" ? "Ownership claim" : req.name}
+                      </span>
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[req.status]}`}
                       >
@@ -330,8 +332,9 @@ export function ProfileForm({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {AMENITY_LABELS[req.amenity] ?? req.amenity}
-                      {req.address ? ` · ${req.address}` : ""}
+                      {req.type === "owner_claim"
+                        ? req.description ?? "No description"
+                        : `${AMENITY_LABELS[req.amenity] ?? req.amenity}${req.address ? ` · ${req.address}` : ""}`}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
                       {new Date(req.created_at).toLocaleDateString("en-GB", {
