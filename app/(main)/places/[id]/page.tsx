@@ -12,6 +12,7 @@ import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { ReviewFormSchema, type ReviewFormValues } from "@/lib/schemas";
 import { LuCopy, LuNavigation, LuThumbsUp, LuChevronRight, LuPencil } from "react-icons/lu";
+import { PubSolid, PubLine } from "@/components/icons";
 import { ClaimForm } from "./claim-form";
 import { EditPlaceDialog } from "./edit-place-dialog";
 import { Button } from "@/components/ui/button";
@@ -221,14 +222,13 @@ export default function PlaceDetailPage() {
               </span>
               <div className="pb-1">
                 <div className="flex gap-0.5 mb-0.5">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <span
-                      key={s}
-                      className={`text-lg ${avgRating != null && avgRating >= s ? "text-primary" : "text-muted"}`}
-                    >
-                      ★
-                    </span>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((s) =>
+                    avgRating != null && avgRating >= s ? (
+                      <PubSolid key={s} size={18} className="text-primary" />
+                    ) : (
+                      <PubLine key={s} size={18} className="text-muted-foreground/40" />
+                    )
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {reviews.length} review{reviews.length !== 1 ? "s" : ""}
@@ -239,7 +239,9 @@ export default function PlaceDetailPage() {
             <div className="space-y-1.5">
               {[5, 4, 3, 2, 1].map((star, i) => (
                 <div key={star} className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-4">{star}★</span>
+                  <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground w-5">
+                    {star}<PubSolid size={10} className="text-muted-foreground" />
+                  </span>
                   <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full"
@@ -310,17 +312,13 @@ export default function PlaceDetailPage() {
                                 onClick={() => field.onChange(star)}
                                 onMouseEnter={() => setHoverRating(star)}
                                 onMouseLeave={() => setHoverRating(0)}
-                                className="text-2xl leading-none transition-colors"
+                                className="leading-none transition-colors"
                               >
-                                <span
-                                  className={
-                                    (hoverRating || field.value) >= star
-                                      ? "text-primary"
-                                      : "text-muted-foreground/30"
-                                  }
-                                >
-                                  ★
-                                </span>
+                                {(hoverRating || field.value) >= star ? (
+                                  <PubSolid size={28} className="text-primary" />
+                                ) : (
+                                  <PubLine size={28} className="text-muted-foreground/30" />
+                                )}
                               </button>
                             ))}
                           </div>
@@ -554,14 +552,13 @@ function ReviewCard({ review }: { review: Review }) {
         {review.rating != null && (
           <div className="flex items-center gap-1">
             <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <span
-                  key={s}
-                  className={`text-sm ${review.rating! >= s ? "text-primary" : "text-muted-foreground/30"}`}
-                >
-                  ★
-                </span>
-              ))}
+              {[1, 2, 3, 4, 5].map((s) =>
+                review.rating! >= s ? (
+                  <PubSolid key={s} size={14} className="text-primary" />
+                ) : (
+                  <PubLine key={s} size={14} className="text-muted-foreground/30" />
+                )
+              )}
             </div>
             <span className="text-xs font-bold text-muted-foreground ml-1">{review.rating}.0</span>
           </div>

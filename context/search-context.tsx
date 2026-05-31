@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 type SearchState = {
   searchQuery: string;
@@ -16,10 +16,10 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSelectedId, setSearchSelectedId] = useState<string | null>(null);
 
-  function clearSearch() {
+  const clearSearch = useCallback(() => {
     setSearchQuery("");
     setSearchSelectedId(null);
-  }
+  }, []);
 
   return (
     <SearchContext.Provider

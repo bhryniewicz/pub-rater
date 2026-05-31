@@ -142,7 +142,7 @@ export function SearchBar() {
         className={`flex items-center gap-2 px-4 h-11 rounded-xl border text-sm transition-colors ${
           isActive
             ? "bg-primary/10 border-primary/50 text-foreground"
-            : "bg-card border-border dark:bg-zinc-700 dark:border-zinc-600 text-foreground dark:text-zinc-200"
+            : "bg-input border-border text-foreground"
         }`}
       >
         <LuSearch className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -252,7 +252,7 @@ export function SearchBar() {
                 onClick={() => setLikedFilterActive((v) => !v)}
                 className={`flex-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
                   likedFilterActive
-                    ? "bg-rose-500 text-white border-rose-500"
+                    ? "bg-primary text-primary-foreground border-primary"
                     : "text-muted-foreground border-border hover:border-primary/50"
                 }`}
               >
@@ -290,7 +290,7 @@ export function SearchBar() {
               disabled={geoStatus === "denied" || geoStatus === "unavailable"}
               className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 radiusFilter !== null
-                  ? "bg-sky-500 text-white border-sky-500"
+                  ? "bg-primary text-primary-foreground border-primary"
                   : "text-muted-foreground border-border hover:border-primary/50"
               }`}
             >

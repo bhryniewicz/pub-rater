@@ -11,6 +11,13 @@ import Map, {
 } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase, type MapMarker, type Place } from "@/lib/supabase";
+import {
+  PubSolid,
+  PubLine,
+  BarSolid,
+  BiergartenSolid,
+  MixedSolid,
+} from "@/components/icons";
 
 // Above this zoom: individual markers
 const CLUSTER_THRESHOLD = 14;
@@ -146,15 +153,29 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
   return items;
 }
 
-const AMENITY_ICONS: Record<string, string> = {
-  pub: "🍺",
-  bar: "🥂",
-  restaurant: "🍽️",
-  cafe: "☕",
-  nightclub: "🎵",
-  biergarten: "🌳",
-  mixed: "📍",
-};
+function AmenityIcon({
+  amenity,
+  size = 20,
+  color = "#2B1A08",
+}: {
+  amenity: string;
+  size?: number;
+  color?: string;
+}) {
+  switch (amenity) {
+    case "pub":
+    case "restaurant":
+    case "cafe":
+    case "nightclub":
+      return <PubSolid size={size} color={color} />;
+    case "bar":
+      return <BarSolid size={size} color={color} />;
+    case "biergarten":
+      return <BiergartenSolid size={size} color={color} />;
+    default:
+      return <MixedSolid size={size} color={color} />;
+  }
+}
 
 const AMENITY_COLORS: Record<string, string> = {
   pub: "#d97706",
@@ -165,10 +186,6 @@ const AMENITY_COLORS: Record<string, string> = {
   biergarten: "#16a34a",
   mixed: "#facc15",
 };
-
-function amenityIcon(amenity: string): string {
-  return AMENITY_ICONS[amenity] ?? "📍";
-}
 
 function amenityColor(amenity: string): string {
   return AMENITY_COLORS[amenity] ?? "#4b5563";
@@ -208,6 +225,7 @@ export default function MapComponent({
 
   const mapRef = useRef<MapRef>(null);
   const [zoom, setZoom] = useState(7);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loadingPlace, setLoadingPlace] = useState(false);
@@ -247,14 +265,14 @@ export default function MapComponent({
   }, [focusedMarker]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!userLocation || hasFocusedUser.current) return;
+    if (!mapLoaded || !userLocation || hasFocusedUser.current) return;
     hasFocusedUser.current = true;
     mapRef.current?.flyTo({
       center: [userLocation.lon, userLocation.lat],
       zoom: 13,
       duration: 1500,
     });
-  }, [userLocation]);
+  }, [mapLoaded, userLocation]);
 
   useEffect(() => {
     if (!active) return;
@@ -282,6 +300,7 @@ export default function MapComponent({
       style={{ width: "100%", height: "100%" }}
       mapStyle={mapStyle}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      onLoad={() => setMapLoaded(true)}
       onZoom={onZoom}
       minZoom={5}
       onClick={() => {
@@ -308,9 +327,9 @@ export default function MapComponent({
                     background: bg,
                     boxShadow: `0 0 0 4px ${bg}55`,
                   }}
-                  className="w-[34px] h-[34px] rounded-xl flex items-center justify-center text-[15px] cursor-pointer"
+                  className="w-[34px] h-[34px] rounded-xl flex items-center justify-center cursor-pointer"
                 >
-                  {amenityIcon(item.dominantAmenity)}
+                  <AmenityIcon amenity={item.dominantAmenity} size={18} />
                 </div>
                 <div
                   className={`absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
@@ -343,9 +362,9 @@ export default function MapComponent({
                   ? `0 0 0 6px ${bg}77`
                   : `0 0 0 4px ${bg}55`,
               }}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center text-[16px] cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
             >
-              {amenityIcon(pub.amenity)}
+              <AmenityIcon amenity={pub.amenity} size={20} />
             </div>
           </Marker>
         );
@@ -389,22 +408,36 @@ export default function MapComponent({
                 : null;
               return rating ? (
                 <div className="flex items-center gap-1.5">
-                  <div className="flex gap-[2px]">
+                  <div className="flex gap-[3px]">
                     {Array.from({ length: 5 }).map((_, i) => {
                       const full = rating.value >= i + 1;
                       const half = !full && rating.value >= i + 0.5;
+                      if (half) {
+                        return (
+                          <span
+                            key={i}
+                            className="relative inline-flex items-center justify-center w-[14px] h-[14px]"
+                          >
+                            <PubLine size={14} color="#6b7280" />
+                            <span
+                              className="absolute top-0 left-0 bottom-0 overflow-hidden"
+                              style={{ width: "50%" }}
+                            >
+                              <PubSolid size={14} color="#facc15" />
+                            </span>
+                          </span>
+                        );
+                      }
                       return (
                         <span
                           key={i}
-                          className={`inline-flex items-center justify-center w-[14px] h-[14px] rounded text-[9px] font-bold ${
-                            full
-                              ? "bg-yellow-400 text-zinc-900"
-                              : half
-                              ? "bg-yellow-400/60 text-zinc-900"
-                              : "bg-zinc-700 text-zinc-500"
-                          }`}
+                          className="inline-flex items-center justify-center w-[14px] h-[14px]"
                         >
-                          ★
+                          {full ? (
+                            <PubSolid size={14} color="#facc15" />
+                          ) : (
+                            <PubLine size={14} color="#6b7280" />
+                          )}
                         </span>
                       );
                     })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,7 @@ const AGE_GATE_KEY = "pub-rater-age-verified";
 
 export function AgeGate() {
   const [open, setOpen] = useState(false);
-  const [denied, setDenied] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (!localStorage.getItem(AGE_GATE_KEY)) {
@@ -29,7 +30,7 @@ export function AgeGate() {
   }
 
   function handleDeny() {
-    setDenied(true);
+    router.push("/underage");
   }
 
   return (
@@ -38,19 +39,16 @@ export function AgeGate() {
         <DialogHeader>
           <DialogTitle>Age Verification</DialogTitle>
           <DialogDescription>
-            {denied
-              ? "Sorry, you must be 18 or older to use Pub Rater."
-              : "This site contains alcohol-related content. You must be 18 or older to continue."}
+            This site contains alcohol-related content. You must be 18 or older
+            to continue.
           </DialogDescription>
         </DialogHeader>
-        {!denied && (
-          <DialogFooter>
-            <Button variant="outline" onClick={handleDeny}>
-              No, I&apos;m under 18
-            </Button>
-            <Button onClick={handleConfirm}>Yes, I&apos;m 18+</Button>
-          </DialogFooter>
-        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={handleDeny}>
+            No, I&apos;m under 18
+          </Button>
+          <Button onClick={handleConfirm}>Yes, I&apos;m 18+</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

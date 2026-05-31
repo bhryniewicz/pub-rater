@@ -58,10 +58,13 @@ export async function approveRequest(id: string): Promise<void> {
 
   if (markerError || !marker) throw markerError ?? new Error('Failed to create marker')
 
+  const short_code = marker.id.replace(/-/g, '').slice(0, 6)
+
   const { error: placeError } = await supabase.from('places').insert({
     marker_id: marker.id,
     address: req.address,
     opening_hours: req.opening_hours,
+    short_code,
   })
 
   if (placeError) throw placeError

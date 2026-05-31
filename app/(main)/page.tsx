@@ -18,17 +18,39 @@ import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
 import { isOpenNow } from "@/lib/opening-hours";
 import { LuArrowLeft } from "react-icons/lu";
+import { MdDoorFront } from "react-icons/md";
+import {
+  PubSolid,
+  BarSolid,
+  BiergartenSolid,
+  MixedSolid,
+} from "@/components/icons";
 
 const PAGE_SIZE = 20;
 
-const AMENITY_ICONS: Record<string, string> = {
-  pub: "🍺",
-  bar: "🥂",
-  restaurant: "🍽️",
-  cafe: "☕",
-  nightclub: "🎶",
-  biergarten: "🌻",
-};
+function AmenityIcon({
+  amenity,
+  size = 20,
+  color = "currentColor",
+}: {
+  amenity: string;
+  size?: number;
+  color?: string;
+}) {
+  switch (amenity) {
+    case "pub":
+    case "restaurant":
+    case "cafe":
+    case "nightclub":
+      return <PubSolid size={size} color={color} />;
+    case "bar":
+      return <BarSolid size={size} color={color} />;
+    case "biergarten":
+      return <BiergartenSolid size={size} color={color} />;
+    default:
+      return <MixedSolid size={size} color={color} />;
+  }
+}
 
 const AMENITY_COLORS: Record<string, string> = {
   pub: "#d97706",
@@ -120,7 +142,7 @@ async function fetchPubListPage(
 export default function Home() {
   const { user, loading: userLoading } = useUser();
   const { coords: userLocation } = useGeolocation();
-  const { searchQuery, searchSelectedId } = useSearch();
+  const { searchQuery, searchSelectedId, clearSearch } = useSearch();
   const {
     categoryFilter,
     setCategoryFilter,
@@ -219,6 +241,11 @@ export default function Home() {
       )
       .map((m) => m.id);
   }, [radiusFilter, userLocation, mapMarkers]);
+
+  useEffect(() => {
+    clearSearch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!searchSelectedId) return;
@@ -389,9 +416,11 @@ export default function Home() {
                         : "bg-secondary border-border dark:border-transparent hover:bg-secondary/80 text-foreground"
                     }`}
                   >
-                    <span className="text-base leading-none">
-                      {AMENITY_ICONS[type] ?? "📍"}
-                    </span>
+                    <AmenityIcon
+                      amenity={type}
+                      size={20}
+                      color={active ? "white" : undefined}
+                    />
                     <span className="absolute -top-1.5 -right-4 text-muted-foreground text-[10px] font-black px-1.5 py-0.5 leading-none bg-border dark:bg-muted rounded-full">
                       {count}
                     </span>
@@ -466,6 +495,17 @@ export default function Home() {
           >
             <LuArrowLeft size={16} />
             List view
+          </button>
+          <button
+            onClick={() => setOpenFilterActive((prev) => !prev)}
+            className={`md:hidden absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-semibold shadow-lg border transition-colors ${
+              openFilterActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background/90 text-foreground border-border"
+            }`}
+          >
+            <MdDoorFront size={16} />
+            Open now
           </button>
           <Map
             markers={visibleMarkers}
