@@ -16,17 +16,19 @@ import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
-import { isOpenNow } from "@/lib/opening-hours";
+import { isOpenNow, isOpenLate } from "@/lib/opening-hours";
 import { LuArrowLeft } from "react-icons/lu";
-import { MdDoorFront } from "react-icons/md";
 import {
-  PubSolid,
+  PubLine,
   BarSolid,
   BiergartenSolid,
   MixedSolid,
 } from "@/components/icons";
+import { OpenToggle } from "@/components/open-toggle";
 
 const PAGE_SIZE = 20;
+
+const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
 function AmenityIcon({
   amenity,
@@ -42,7 +44,7 @@ function AmenityIcon({
     case "restaurant":
     case "cafe":
     case "nightclub":
-      return <PubSolid size={size} color={color} />;
+      return <PubLine size={size} color={color} />;
     case "bar":
       return <BarSolid size={size} color={color} />;
     case "biergarten":
@@ -60,8 +62,6 @@ const AMENITY_COLORS: Record<string, string> = {
   nightclub: "#db2777",
   biergarten: "#16a34a",
 };
-
-const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
 function haversineKm(
   lat1: number,
@@ -83,7 +83,11 @@ type PubListFilters = {
   amenityFilter: string[];
   likedPlaces: string[];
   likedFilterActive: boolean;
+  ownedFilterActive: boolean;
+  ownedIds: string[] | null;
   openIds: string[] | null;
+  openLateIds: string[] | null;
+  minRatingFilter: number | null;
   voivodeshipIds: string[] | null;
   nearbyIds: string[] | null;
   searchQuery: string;
@@ -111,6 +115,10 @@ async function fetchPubListPage(
       : filters.likedPlaces;
     if (ids.length === 0) return { items: [], nextPage: null };
     query = query.in("id", ids);
+  } else if (filters.ownedFilterActive) {
+    const ids = filters.ownedIds ?? [];
+    if (ids.length === 0) return { items: [], nextPage: null };
+    query = query.in("id", ids);
   } else {
     if (filters.amenityFilter.length > 0) {
       query = query.in("amenity", filters.amenityFilter);
@@ -123,6 +131,15 @@ async function fetchPubListPage(
   if (filters.openIds !== null) {
     if (filters.openIds.length === 0) return { items: [], nextPage: null };
     query = query.in("id", filters.openIds);
+  }
+
+  if (filters.openLateIds !== null) {
+    if (filters.openLateIds.length === 0) return { items: [], nextPage: null };
+    query = query.in("id", filters.openLateIds);
+  }
+
+  if (filters.minRatingFilter !== null) {
+    query = query.gte("app_rating", filters.minRatingFilter);
   }
 
   if (filters.nearbyIds !== null) {
@@ -149,8 +166,11 @@ export default function Home() {
     filterActive,
     likedFilterActive,
     setLikedFilterActive,
+    ownedFilterActive,
+    setOwnedFilterActive,
     openFilterActive,
-    setOpenFilterActive,
+    openLateFilterActive,
+    minRatingFilter,
     voivodeshipFilter,
     radiusFilter,
   } = useFilters();
@@ -191,12 +211,24 @@ export default function Home() {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("is_onboarded, preferences, liked_places")
+        .select("is_onboarded, preferences, liked_places, role")
         .eq("id", user!.id)
         .single();
       return data;
     },
     enabled: !!user && !userLoading,
+  });
+
+  const { data: ownedIds = null } = useQuery({
+    queryKey: ["owned_markers", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("markers")
+        .select("id")
+        .eq("owner_id", user!.id);
+      return (data ?? []).map((m: { id: string }) => m.id);
+    },
+    enabled: !!user && profile?.role === "owner",
   });
 
   useEffect(() => {
@@ -229,6 +261,13 @@ export default function Home() {
       .filter((m) => m.opening_hours != null && isOpenNow(m.opening_hours))
       .map((m) => m.id);
   }, [openFilterActive, mapMarkers]);
+
+  const openLateIds = useMemo(() => {
+    if (!openLateFilterActive || mapMarkers.length === 0) return null;
+    return mapMarkers
+      .filter((m) => m.opening_hours != null && isOpenLate(m.opening_hours))
+      .map((m) => m.id);
+  }, [openLateFilterActive, mapMarkers]);
 
   const nearbyIds = useMemo(() => {
     if (radiusFilter === null || !userLocation || mapMarkers.length === 0)
@@ -266,7 +305,11 @@ export default function Home() {
       amenityFilter,
       likedFilterActive,
       likedFilterActive ? likedPlaces : [],
+      ownedFilterActive,
+      ownedFilterActive ? ownedIds : null,
       openIds,
+      openLateIds,
+      minRatingFilter,
       voivodeshipFilter,
       nearbyIds,
       searchQuery,
@@ -277,7 +320,11 @@ export default function Home() {
         amenityFilter,
         likedPlaces,
         likedFilterActive,
+        ownedFilterActive,
+        ownedIds,
         openIds,
+        openLateIds,
+        minRatingFilter,
         voivodeshipIds,
         nearbyIds,
         searchQuery,
@@ -317,6 +364,9 @@ export default function Home() {
     if (likedFilterActive) {
       const liked = new Set(likedPlaces);
       markers = markers.filter((m) => liked.has(m.id));
+    } else if (ownedFilterActive) {
+      const owned = new Set(ownedIds ?? []);
+      markers = markers.filter((m) => owned.has(m.id));
     } else if (amenityFilter.length > 0) {
       const allowed = new Set(amenityFilter);
       markers = markers.filter((m) => allowed.has(m.amenity));
@@ -324,6 +374,15 @@ export default function Home() {
     if (openIds !== null) {
       const open = new Set(openIds);
       markers = markers.filter((m) => open.has(m.id));
+    }
+    if (openLateIds !== null) {
+      const late = new Set(openLateIds);
+      markers = markers.filter((m) => late.has(m.id));
+    }
+    if (minRatingFilter !== null) {
+      markers = markers.filter(
+        (m) => m.app_rating !== null && m.app_rating >= minRatingFilter,
+      );
     }
     if (nearbyIds !== null) {
       const nearby = new Set(nearbyIds);
@@ -334,9 +393,13 @@ export default function Home() {
     filterActive,
     likedFilterActive,
     likedPlaces,
+    ownedFilterActive,
+    ownedIds,
     amenityFilter,
     categoryFilter,
     openIds,
+    openLateIds,
+    minRatingFilter,
     nearbyIds,
     mapMarkers,
     voivodeshipFilter,
@@ -383,7 +446,7 @@ export default function Home() {
     <main className="flex flex-col flex-1 min-h-0">
       <AgeGate />
       {markersLoaded && (
-        <div className="hidden md:flex gap-4 pl-12 py-2  shrink-0 overflow-x-auto">
+        <div className="hidden md:flex gap-4 pl-12 py-2 shrink-0 overflow-x-auto">
           {Object.entries(
             mapMarkers.reduce<Record<string, number>>((acc, p) => {
               acc[p.amenity] = (acc[p.amenity] ?? 0) + 1;
@@ -398,6 +461,7 @@ export default function Home() {
                   key={type}
                   onClick={() => {
                     setLikedFilterActive(false);
+                    setOwnedFilterActive(false);
                     setCategoryFilter((prev) =>
                       prev.includes(type) ? [] : [type],
                     );
@@ -434,14 +498,13 @@ export default function Home() {
           <button
             onClick={() => {
               setCategoryFilter([]);
+              setOwnedFilterActive(false);
               setLikedFilterActive((prev) => !prev);
             }}
             className="flex flex-col items-center gap-1 shrink-0"
           >
             <div
-              style={
-                likedFilterActive ? { background: "#db2777" } : undefined
-              }
+              style={likedFilterActive ? { background: "#db2777" } : undefined}
               className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all ${
                 likedFilterActive
                   ? "border-transparent text-white"
@@ -457,6 +520,33 @@ export default function Home() {
               liked
             </span>
           </button>
+          {profile?.role === "owner" && (
+            <button
+              onClick={() => {
+                setCategoryFilter([]);
+                setLikedFilterActive(false);
+                setOwnedFilterActive((prev) => !prev);
+              }}
+              className="flex flex-col items-center gap-1 shrink-0"
+            >
+              <div
+                style={ownedFilterActive ? { background: "#1d4ed8" } : undefined}
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all ${
+                  ownedFilterActive
+                    ? "border-transparent text-white"
+                    : "bg-secondary border-border dark:border-transparent hover:bg-secondary/80 text-foreground"
+                }`}
+              >
+                <span className="text-base leading-none">🏠</span>
+                <span className="absolute -top-1.5 -right-4 text-muted-foreground text-[10px] font-black px-1.5 py-0.5 leading-none bg-border dark:bg-muted rounded-full">
+                  {ownedIds?.length ?? 0}
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold leading-none text-muted-foreground">
+                owned places
+              </span>
+            </button>
+          )}
         </div>
       )}
       <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-2 overflow-hidden">
@@ -481,8 +571,6 @@ export default function Home() {
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
               onLoadMore={fetchNextPage}
-              openFilterActive={openFilterActive}
-              onOpenFilterToggle={() => setOpenFilterActive((prev) => !prev)}
             />
           )}
         </div>
@@ -496,22 +584,15 @@ export default function Home() {
             <LuArrowLeft size={16} />
             List view
           </button>
-          <button
-            onClick={() => setOpenFilterActive((prev) => !prev)}
-            className={`md:hidden absolute top-4 right-4 z-10 flex items-center gap-1.5 backdrop-blur-sm rounded-full px-4 py-2 text-sm font-semibold shadow-lg border transition-colors ${
-              openFilterActive
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background/90 text-foreground border-border"
-            }`}
-          >
-            <MdDoorFront size={16} />
-            Open now
-          </button>
+          <div className="md:hidden absolute top-4 right-4 z-10 shadow-lg">
+            <OpenToggle className="bg-background/90 backdrop-blur-sm border-border/80" />
+          </div>
           <Map
             markers={visibleMarkers}
             focusedMarker={focusedMarker}
             userLocation={userLocation}
             active={mobileView === "map"}
+            automaticZoom={preferences?.automatic_zoom ?? true}
           />
         </div>
       </div>

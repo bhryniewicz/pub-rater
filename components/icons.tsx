@@ -4,41 +4,19 @@ type IconProps = {
   className?: string;
 };
 
-export function PubSolid({ size = 24, color = "currentColor", className }: IconProps) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={color}
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M5.5 8.5h9.5V20a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1z" />
-      <path d="M15 10.5h2.6A2.4 2.4 0 0 1 20 12.9v1.6a2.4 2.4 0 0 1-2.4 2.4H15v-2h2.2a.6.6 0 0 0 .6-.6v-1.2a.6.6 0 0 0-.6-.6H15z" />
-    </svg>
-  );
-}
-
 export function PubLine({ size = 24, color = "currentColor", className }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="4 7 17 15"
+      fill={color}
       className={className}
       aria-hidden="true"
     >
-      <rect x="5.5" y="9" width="9" height="11" rx="1.6" />
-      <path d="M14.5 11h2.6a2 2 0 0 1 2 2v1.6a2 2 0 0 1-2 2h-2.6" />
-      <path d="M5.7 9c.8-1.5 2-1.5 2.8 0 .8-1.5 2-1.5 2.8 0 .8-1.5 1.7-1.5 2.2 0" />
+      <path d="M5.5 8.5h9.5V20a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1z" />
+      <path d="M15 10.5h2.6A2.4 2.4 0 0 1 20 12.9v1.6a2.4 2.4 0 0 1-2.4 2.4H15v-2h2.2a.6.6 0 0 0 .6-.6v-1.2a.6.6 0 0 0-.6-.6H15z" />
     </svg>
   );
 }

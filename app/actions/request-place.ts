@@ -15,7 +15,7 @@ export async function requestPlace(payload: RequestPlacePayload): Promise<void> 
 
   const supabase = await createServerSupabaseClient()
 
-  const { error } = await supabase.from('location_requests').insert({
+  const { error } = await supabase.from('requests').insert({
     type: 'place_request',
     name: parsed.data.name,
     amenity: parsed.data.amenity,
@@ -25,6 +25,8 @@ export async function requestPlace(payload: RequestPlacePayload): Promise<void> 
     opening_hours: payload.opening_hours,
     status: 'pending',
     requested_by: user.id,
+    requester_email: user.email ?? null,
+    requester_name: (user.user_metadata?.display_name as string | undefined) ?? null,
   })
 
   if (error) throw error

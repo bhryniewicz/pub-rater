@@ -26,7 +26,7 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
 
   // Check no pending claim already exists for this place
   const { data: existing } = await supabase
-    .from('location_requests')
+    .from('requests')
     .select('id')
     .eq('marker_id', parsed.data.marker_id)
     .eq('type', 'owner_claim')
@@ -35,12 +35,14 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
 
   if (existing) throw new Error('A pending claim already exists for this place')
 
-  const { error } = await supabase.from('location_requests').insert({
+  const { error } = await supabase.from('requests').insert({
     type: 'owner_claim',
     marker_id: parsed.data.marker_id,
     description: parsed.data.description,
     status: 'pending',
     requested_by: user.id,
+    requester_email: user.email ?? null,
+    requester_name: (user.user_metadata?.display_name as string | undefined) ?? null,
   })
 
   if (error) throw error

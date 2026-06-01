@@ -6,18 +6,16 @@ import { type PubListItem } from "@/lib/supabase";
 import { isOpenNow, getCloseTimeToday } from "@/lib/opening-hours";
 import Image from "next/image";
 import { IoLocationSharp } from "react-icons/io5";
-import { MdDoorFront } from "react-icons/md";
 import { LuMap } from "react-icons/lu";
 import { BsBookmark, BsBookmarkFill } from "react-icons/bs";
-import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  PubSolid,
   PubLine,
   BarSolid,
   BiergartenSolid,
   MixedSolid,
 } from "@/components/icons";
+import { OpenToggle } from "@/components/open-toggle";
 
 function AmenityIcon({
   amenity,
@@ -33,7 +31,7 @@ function AmenityIcon({
     case "restaurant":
     case "cafe":
     case "nightclub":
-      return <PubSolid size={size} color={color} />;
+      return <PubLine size={size} color={color} />;
     case "bar":
       return <BarSolid size={size} color={color} />;
     case "biergarten":
@@ -52,7 +50,7 @@ function BeerRating({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex gap-[3px]">
+      <div className="flex items-center, gap-1">
         {Array.from({ length: 5 }).map((_, i) => {
           const full = rating >= i + 1;
           const half = !full && rating >= i + 0.5;
@@ -60,14 +58,14 @@ function BeerRating({
             return (
               <span
                 key={i}
-                className="relative inline-flex items-center justify-center w-[18px] h-[18px]"
+                className="relative inline-flex items-center justify-center w-[14px] h-[14px]"
               >
-                <PubLine size={18} className="text-muted-foreground" />
+                <PubLine size={14} className="text-muted-foreground" />
                 <span
                   className="absolute top-0 left-0 bottom-0 overflow-hidden"
                   style={{ width: "50%" }}
                 >
-                  <PubSolid size={18} className="text-primary" />
+                  <PubLine size={14} className="text-primary" />
                 </span>
               </span>
             );
@@ -75,12 +73,12 @@ function BeerRating({
           return (
             <span
               key={i}
-              className="inline-flex items-center justify-center w-[18px] h-[18px]"
+              className="inline-flex items-center justify-center w-[14px] h-[14px]"
             >
               {full ? (
-                <PubSolid size={18} className="text-primary" />
+                <PubLine size={14} className="text-primary" />
               ) : (
-                <PubLine size={18} className="text-muted-foreground" />
+                <PubLine size={14} className="text-muted-foreground" />
               )}
             </span>
           );
@@ -106,8 +104,6 @@ interface Props {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadMore?: () => void;
-  openFilterActive?: boolean;
-  onOpenFilterToggle?: () => void;
 }
 
 export default function PubList({
@@ -120,8 +116,6 @@ export default function PubList({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
-  openFilterActive,
-  onOpenFilterToggle,
 }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -155,40 +149,22 @@ export default function PubList({
 
   return (
     <aside className="flex flex-col h-full overflow-hidden border-r border-border">
-      <div className="md:pr-4 pt-2 pb-4 shrink-0 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground bg- font-extrabold">
-          Dostępne lokale - {totalCount} lokali
-        </p>
-        <div className="flex items-center gap-2">
-          {onOpenFilterToggle && (
-            <label
-              className={`flex items-center gap-1.5 cursor-pointer text-xs font-extrabold transition-colors ${
-                openFilterActive ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <MdDoorFront
-                className={`text-base transition-colors ${
-                  openFilterActive ? "text-primary" : "text-muted-foreground"
-                }`}
-              />
-
-              <Switch
-                checked={openFilterActive ?? false}
-                onCheckedChange={() => onOpenFilterToggle()}
-                className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
-              />
-            </label>
-          )}
-          {onShowMap && (
-            <button
-              onClick={onShowMap}
-              className="md:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border text-muted-foreground border-border hover:border-primary/50 transition-colors"
-            >
-              <LuMap size={13} />
-              Map
-            </button>
-          )}
+      <div className="md:pr-4 pt-2 pb-4 shrink-0 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <p className="text-sm text-muted-foreground font-extrabold shrink-0">
+            Dostępne lokale - {totalCount} lokali
+          </p>
+          <OpenToggle />
         </div>
+        {onShowMap && (
+          <button
+            onClick={onShowMap}
+            className="md:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border text-muted-foreground border-border hover:border-primary/50 transition-colors shrink-0"
+          >
+            <LuMap size={13} />
+            Map
+          </button>
+        )}
       </div>
 
       <ul
@@ -256,7 +232,7 @@ export default function PubList({
                   <div className="absolute bottom-3 left-3 right-3 md:hidden flex items-center justify-between">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
                       <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${openNow === true ? "bg-green-400" : openNow === false ? "bg-red-400" : "bg-zinc-400"}`}
+                        className={`w-2 h-2 rounded-full shrink-0 ${openNow === true ? "bg-open" : openNow === false ? "bg-closed" : "bg-zinc-400"}`}
                       />
                       <span className="text-xs font-bold text-white">
                         {openNow === true
@@ -316,7 +292,7 @@ export default function PubList({
                         )}
                         {openNow === true ? (
                           <>
-                            <span className="font-extrabold text-green-500">
+                            <span className="font-extrabold text-open">
                               Open
                             </span>
                             {closeTime && (
@@ -326,7 +302,7 @@ export default function PubList({
                             )}
                           </>
                         ) : openNow === false ? (
-                          <span className="font-extrabold text-red-500">
+                          <span className="font-extrabold text-closed">
                             Closed
                           </span>
                         ) : (

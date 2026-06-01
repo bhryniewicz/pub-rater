@@ -12,7 +12,9 @@ type OwnedPlace = {
 };
 
 async function fetchOwnedPlaces(): Promise<OwnedPlace[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) return [];
 
   const { data, error } = await supabase
@@ -45,7 +47,11 @@ const AMENITY_LABELS: Record<string, string> = {
 };
 
 export function OwnedPlaces() {
-  const { data: places, isLoading, isError } = useQuery({
+  const {
+    data: places,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["owned_places"],
     queryFn: fetchOwnedPlaces,
   });

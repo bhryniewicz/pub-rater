@@ -128,6 +128,20 @@ export function getCloseTimeToday(hours: OpeningHours, now = new Date()): string
   return slot.close === '24:00' ? '00:00' : slot.close
 }
 
+export function isOpenLate(hours: OpeningHours): boolean {
+  for (const key of DAY_KEYS) {
+    const slot = hours[key]
+    if (!slot || slot.close === null) continue
+    const [closeH, closeM] = slot.close.split(':').map(Number)
+    const [openH, openM] = slot.open.split(':').map(Number)
+    const closeMins = closeH * 60 + closeM
+    const openMins = openH * 60 + openM
+    // Crosses midnight: close time (e.g. 02:00) is less than open time (e.g. 22:00)
+    if (closeMins > 0 && closeMins < openMins) return true
+  }
+  return false
+}
+
 export function isOpenNow(hours: OpeningHours, now = new Date()): boolean {
   // JS getDay(): 0=Sun … 6=Sat → convert to Mo=0 … Su=6
   const jsDay = now.getDay()

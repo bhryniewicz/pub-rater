@@ -14,14 +14,15 @@ export async function fetchAllMarkers(): Promise<import('@/lib/schemas').MapMark
   while (true) {
     const { data, error } = await supabase
       .from("markers")
-      .select("id, name, amenity, lat, lon, outdoor_seating, voivodeship, places(opening_hours)")
+      .select("id, name, amenity, lat, lon, outdoor_seating, voivodeship, places(opening_hours, app_rating)")
       .order("id")
       .range(from, from + pageSize - 1);
     if (error || !data) break;
-    const raw = data as unknown as Array<Record<string, unknown> & { places: { opening_hours: import('@/lib/schemas').MapMarker['opening_hours'] } | null }>;
+    const raw = data as unknown as Array<Record<string, unknown> & { places: { opening_hours: import('@/lib/schemas').MapMarker['opening_hours']; app_rating: number | null } | null }>;
     const flat = raw.map(({ places, ...rest }) => ({
       ...rest,
       opening_hours: places?.opening_hours ?? null,
+      app_rating: places?.app_rating ?? null,
     })) as import('@/lib/schemas').MapMarker[];
     all = all.concat(flat);
     if (data.length < pageSize) break;

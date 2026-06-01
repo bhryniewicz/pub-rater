@@ -13,7 +13,14 @@ import {
   CommandItem,
   CommandEmpty,
 } from "@/components/ui/command";
-import { LuSearch, LuSlidersHorizontal, LuCrosshair } from "react-icons/lu";
+import { Switch } from "@/components/ui/switch";
+import {
+  LuSearch,
+  LuSlidersHorizontal,
+  LuCrosshair,
+  LuX,
+  LuChevronUp,
+} from "react-icons/lu";
 import { motion, AnimatePresence } from "framer-motion";
 
 const AMENITY_ICONS: Record<string, string> = {
@@ -34,11 +41,29 @@ const AMENITY_COLORS: Record<string, string> = {
   biergarten: "#16a34a",
 };
 
+const RATING_OPTIONS: { label: string; value: number | null }[] = [
+  { label: "Any", value: null },
+  { label: "3.0 ★ +", value: 3 },
+  { label: "3.5 ★ +", value: 3.5 },
+  { label: "4.0 ★ +", value: 4 },
+  { label: "4.5 ★ +", value: 4.5 },
+];
+
 export function SearchBar() {
   const [input, setInput] = useState("");
   const [debouncedInput, setDebouncedInput] = useState("");
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Pending (staged) filter state — only applied when "Show places" is clicked
+  const [pendingCategoryFilter, setPendingCategoryFilter] = useState<string[]>([]);
+  const [pendingFilterActive, setPendingFilterActive] = useState(false);
+  const [pendingLikedFilterActive, setPendingLikedFilterActive] = useState(false);
+  const [pendingOpenFilterActive, setPendingOpenFilterActive] = useState(false);
+  const [pendingOpenLateFilterActive, setPendingOpenLateFilterActive] = useState(false);
+  const [pendingMinRatingFilter, setPendingMinRatingFilter] = useState<number | null>(null);
+  const [pendingVoivodeshipFilter, setPendingVoivodeshipFilter] = useState<string | null>(null);
+  const [pendingRadiusFilter, setPendingRadiusFilter] = useState<number | null>(null);
 
   const { searchQuery, searchSelectedId, setSearchQuery, setSearchSelectedId, clearSearch } =
     useSearch();
@@ -49,6 +74,12 @@ export function SearchBar() {
     setFilterActive,
     likedFilterActive,
     setLikedFilterActive,
+    openFilterActive,
+    setOpenFilterActive,
+    openLateFilterActive,
+    setOpenLateFilterActive,
+    minRatingFilter,
+    setMinRatingFilter,
     voivodeshipFilter,
     setVoivodeshipFilter,
     radiusFilter,
@@ -58,6 +89,21 @@ export function SearchBar() {
   const { user } = useUser();
   const containerRef = useRef<HTMLDivElement>(null);
   const justSelected = useRef(false);
+
+  // Sync pending state from applied context when panel opens
+  useEffect(() => {
+    if (filtersOpen) {
+      setPendingCategoryFilter(categoryFilter);
+      setPendingFilterActive(filterActive);
+      setPendingLikedFilterActive(likedFilterActive);
+      setPendingOpenFilterActive(openFilterActive);
+      setPendingOpenLateFilterActive(openLateFilterActive);
+      setPendingMinRatingFilter(minRatingFilter);
+      setPendingVoivodeshipFilter(voivodeshipFilter);
+      setPendingRadiusFilter(radiusFilter);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersOpen]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedInput(input), 300);
@@ -118,6 +164,29 @@ export function SearchBar() {
     setOpen(false);
   }
 
+  function clearPendingFilters() {
+    setPendingFilterActive(false);
+    setPendingLikedFilterActive(false);
+    setPendingCategoryFilter([]);
+    setPendingMinRatingFilter(null);
+    setPendingOpenFilterActive(false);
+    setPendingOpenLateFilterActive(false);
+    setPendingVoivodeshipFilter(null);
+    setPendingRadiusFilter(null);
+  }
+
+  function handleApplyFilters() {
+    setCategoryFilter(pendingCategoryFilter);
+    setFilterActive(pendingFilterActive);
+    setLikedFilterActive(pendingLikedFilterActive);
+    setOpenFilterActive(pendingOpenFilterActive);
+    setOpenLateFilterActive(pendingOpenLateFilterActive);
+    setMinRatingFilter(pendingMinRatingFilter);
+    setVoivodeshipFilter(pendingVoivodeshipFilter);
+    setRadiusFilter(pendingRadiusFilter);
+    setFiltersOpen(false);
+  }
+
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (
@@ -125,16 +194,34 @@ export function SearchBar() {
         !containerRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
-        setFiltersOpen(false);
       }
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (filtersOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [filtersOpen]);
+
   const isActive = !!searchQuery || !!searchSelectedId;
+  // hasActiveFilters reflects *applied* filters (context), not pending
   const hasActiveFilters =
-    filterActive || likedFilterActive || !!voivodeshipFilter || categoryFilter.length > 0 || radiusFilter !== null;
+    filterActive ||
+    likedFilterActive ||
+    !!voivodeshipFilter ||
+    categoryFilter.length > 0 ||
+    radiusFilter !== null ||
+    minRatingFilter !== null ||
+    openFilterActive ||
+    openLateFilterActive;
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -232,118 +319,273 @@ export function SearchBar() {
         </div>
       )}
 
-      {/* Filters popup */}
-      {filtersOpen && (
-        <div className="absolute top-full mt-1 right-0 w-full min-w-64 z-50 bg-popover border border-border rounded-xl shadow-2xl p-3 flex flex-col gap-3">
-          {/* My spots + Liked places — only for logged-in users */}
-          {user && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilterActive((v) => !v)}
-                className={`flex-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
-                  filterActive
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "text-muted-foreground border-border hover:border-primary/50"
-                }`}
-              >
-                My spots
-              </button>
-              <button
-                onClick={() => setLikedFilterActive((v) => !v)}
-                className={`flex-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
-                  likedFilterActive
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "text-muted-foreground border-border hover:border-primary/50"
-                }`}
-              >
-                Liked places
-              </button>
-            </div>
-          )}
-
-          {/* Voivodeships */}
-          <select
-            value={voivodeshipFilter ?? ""}
-            onChange={(e) => setVoivodeshipFilter(e.target.value || null)}
-            className="w-full bg-input border border-border text-foreground text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-ring"
-          >
-            <option value="">All voivodeships</option>
-            {VOIVODESHIPS.map((v) => (
-              <option key={v.key} value={v.key}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Near me */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (geoStatus === "denied" || geoStatus === "unavailable") return;
-                if (radiusFilter !== null) {
-                  setRadiusFilter(null);
-                } else {
-                  if (geoStatus === "idle") enableGeo();
-                  setRadiusFilter(1);
-                }
-              }}
-              disabled={geoStatus === "denied" || geoStatus === "unavailable"}
-              className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                radiusFilter !== null
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "text-muted-foreground border-border hover:border-primary/50"
-              }`}
+      {/* Filters drawer */}
+      <AnimatePresence>
+        {filtersOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={() => setFiltersOpen(false)}
+            />
+            {/* Panel — full-width on mobile, right-side drawer on desktop */}
+            <motion.div
+              key="panel"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+              className="fixed inset-y-0 right-0 z-50 w-full md:max-w-sm bg-background flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <LuCrosshair size={12} />
-              {geoStatus === "loading" ? "Locating…" : "Near me"}
-            </button>
-            {radiusFilter !== null && geoCoords && (
-              <select
-                value={radiusFilter}
-                onChange={(e) => setRadiusFilter(Number(e.target.value))}
-                className="flex-1 bg-input border border-border text-foreground text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-ring"
-              >
-                <option value="0.1">0.1 km</option>
-                <option value="0.5">0.5 km</option>
-                <option value="1">1 km</option>
-                <option value="2">2 km</option>
-                <option value="5">5 km</option>
-              </select>
-            )}
-          </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <LuX size={18} />
+                </button>
+                <span className="text-primary font-bold text-base">Filters</span>
+                <button
+                  onClick={clearPendingFilters}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear filters
+                </button>
+              </div>
 
-          {/* Categories — mobile only */}
-          {sortedCategories.length > 0 && (
-            <div className="md:hidden flex flex-wrap gap-2">
-              {sortedCategories.map(([type, count]) => {
-                const active = categoryFilter.includes(type);
-                return (
-                  <button
-                    key={type}
-                    onClick={() =>
-                      setCategoryFilter((prev) =>
-                        prev.includes(type)
-                          ? prev.filter((t) => t !== type)
-                          : [...prev, type],
-                      )
-                    }
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${
-                      active
-                        ? "border-transparent text-white"
-                        : "text-muted-foreground border-border hover:border-primary/50"
-                    }`}
-                    style={active ? { background: AMENITY_COLORS[type] ?? "#4b5563" } : undefined}
-                  >
-                    <span>{AMENITY_ICONS[type] ?? "📍"}</span>
-                    <span className="capitalize">{type}</span>
-                    <span className="text-[10px] opacity-70">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+                {/* My spots + Liked places */}
+                {user && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPendingFilterActive((v) => !v)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2.5 rounded-xl border transition-colors ${
+                        pendingFilterActive
+                          ? "bg-secondary border-foreground/20 text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/20"
+                      }`}
+                    >
+                      <span>📍</span> My spots
+                    </button>
+                    <button
+                      onClick={() => setPendingLikedFilterActive((v) => !v)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2.5 rounded-xl border transition-colors ${
+                        pendingLikedFilterActive
+                          ? "bg-secondary border-foreground/20 text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/20"
+                      }`}
+                    >
+                      <span>🤍</span> Liked places
+                    </button>
+                  </div>
+                )}
+
+                {/* Place type — mobile only */}
+                {sortedCategories.length > 0 && (
+                  <div className="md:hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-bold text-foreground text-sm">Place type</span>
+                      <LuChevronUp size={16} className="text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {sortedCategories.map(([type, count]) => {
+                        const active = pendingCategoryFilter.includes(type);
+                        return (
+                          <button
+                            key={type}
+                            onClick={() =>
+                              setPendingCategoryFilter((prev) =>
+                                prev.includes(type)
+                                  ? prev.filter((t) => t !== type)
+                                  : [...prev, type],
+                              )
+                            }
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                              active
+                                ? "bg-secondary border-foreground/20 text-foreground"
+                                : "border-border text-muted-foreground hover:border-foreground/20"
+                            }`}
+                            style={
+                              active
+                                ? { borderColor: AMENITY_COLORS[type] + "60" }
+                                : undefined
+                            }
+                          >
+                            <span className="text-base shrink-0">
+                              {AMENITY_ICONS[type] ?? "📍"}
+                            </span>
+                            <span className="flex-1 text-left capitalize text-foreground">
+                              {type}
+                            </span>
+                            <span className="text-muted-foreground text-xs font-bold">
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Minimum rating */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-bold text-foreground text-sm">Minimum rating</span>
+                    <LuChevronUp size={16} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {RATING_OPTIONS.map(({ label, value }) => (
+                      <button
+                        key={label}
+                        onClick={() => setPendingMinRatingFilter(value)}
+                        className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                          pendingMinRatingFilter === value
+                            ? "bg-secondary border-foreground/20 text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground/20"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Opening hours */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-bold text-foreground text-sm">Opening hours</span>
+                    <LuChevronUp size={16} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div
+                      className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
+                        pendingOpenFilterActive ? "bg-secondary border-foreground/20" : "border-border"
+                      }`}
+                    >
+                      <div>
+                        <p
+                          className={`text-sm font-medium ${
+                            pendingOpenFilterActive ? "text-open" : "text-foreground"
+                          }`}
+                        >
+                          Open now
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Only places open at this moment
+                        </p>
+                      </div>
+                      <Switch
+                        checked={pendingOpenFilterActive}
+                        onCheckedChange={() => setPendingOpenFilterActive((v) => !v)}
+                        className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
+                      />
+                    </div>
+                    <div
+                      className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
+                        pendingOpenLateFilterActive ? "bg-secondary border-foreground/20" : "border-border"
+                      }`}
+                    >
+                      <div>
+                        <p
+                          className={`text-sm font-medium ${
+                            pendingOpenLateFilterActive ? "text-open" : "text-foreground"
+                          }`}
+                        >
+                          Open late
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Serving after midnight
+                        </p>
+                      </div>
+                      <Switch
+                        checked={pendingOpenLateFilterActive}
+                        onCheckedChange={() => setPendingOpenLateFilterActive((v) => !v)}
+                        className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-bold text-foreground text-sm">Location</span>
+                    <LuChevronUp size={16} className="text-muted-foreground" />
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <select
+                      value={pendingVoivodeshipFilter ?? ""}
+                      onChange={(e) => setPendingVoivodeshipFilter(e.target.value || null)}
+                      className="w-full bg-input border border-border text-foreground text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-ring appearance-none cursor-pointer"
+                    >
+                      <option value="">All voivodeships</option>
+                      {VOIVODESHIPS.map((v) => (
+                        <option key={v.key} value={v.key}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (geoStatus === "denied" || geoStatus === "unavailable") return;
+                          if (pendingRadiusFilter !== null) {
+                            setPendingRadiusFilter(null);
+                          } else {
+                            if (geoStatus === "idle") enableGeo();
+                            setPendingRadiusFilter(1);
+                          }
+                        }}
+                        disabled={geoStatus === "denied" || geoStatus === "unavailable"}
+                        className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                          pendingRadiusFilter !== null
+                            ? "bg-secondary border-foreground/20 text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground/20"
+                        }`}
+                      >
+                        <LuCrosshair size={14} />
+                        {geoStatus === "loading" ? "Locating…" : "Near me"}
+                      </button>
+                      {pendingRadiusFilter !== null && geoCoords && (
+                        <select
+                          value={pendingRadiusFilter}
+                          onChange={(e) => setPendingRadiusFilter(Number(e.target.value))}
+                          className="flex-1 bg-input border border-border text-foreground text-sm rounded-full px-4 py-2.5 focus:outline-none focus:border-ring"
+                        >
+                          <option value="0.1">0.1 km</option>
+                          <option value="0.5">0.5 km</option>
+                          <option value="1">1 km</option>
+                          <option value="2">2 km</option>
+                          <option value="5">5 km</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-border shrink-0">
+                <button
+                  onClick={handleApplyFilters}
+                  className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base"
+                >
+                  Show places
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

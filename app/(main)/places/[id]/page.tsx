@@ -12,7 +12,7 @@ import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { ReviewFormSchema, type ReviewFormValues } from "@/lib/schemas";
 import { LuCopy, LuNavigation, LuThumbsUp, LuChevronRight, LuPencil } from "react-icons/lu";
-import { PubSolid, PubLine } from "@/components/icons";
+import { PubLine } from "@/components/icons";
 import { ClaimForm } from "./claim-form";
 import { EditPlaceDialog } from "./edit-place-dialog";
 import { Button } from "@/components/ui/button";
@@ -224,7 +224,7 @@ export default function PlaceDetailPage() {
                 <div className="flex gap-0.5 mb-0.5">
                   {[1, 2, 3, 4, 5].map((s) =>
                     avgRating != null && avgRating >= s ? (
-                      <PubSolid key={s} size={18} className="text-primary" />
+                      <PubLine key={s} size={18} className="text-primary" />
                     ) : (
                       <PubLine key={s} size={18} className="text-muted-foreground/40" />
                     )
@@ -240,7 +240,7 @@ export default function PlaceDetailPage() {
               {[5, 4, 3, 2, 1].map((star, i) => (
                 <div key={star} className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground w-5">
-                    {star}<PubSolid size={10} className="text-muted-foreground" />
+                    {star}<PubLine size={10} className="text-muted-foreground" />
                   </span>
                   <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                     <div
@@ -315,7 +315,7 @@ export default function PlaceDetailPage() {
                                 className="leading-none transition-colors"
                               >
                                 {(hoverRating || field.value) >= star ? (
-                                  <PubSolid size={28} className="text-primary" />
+                                  <PubLine size={28} className="text-primary" />
                                 ) : (
                                   <PubLine size={28} className="text-muted-foreground/30" />
                                 )}
@@ -383,7 +383,7 @@ export default function PlaceDetailPage() {
             ) : (
               <div className="space-y-3">
                 {reviews.map((review) => (
-                  <ReviewCard key={review.id} review={review} />
+                  <ReviewCard key={review.id} review={review} ownerUserId={marker.owner_id} />
                 ))}
               </div>
             )}
@@ -531,9 +531,10 @@ export default function PlaceDetailPage() {
   );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({ review, ownerUserId }: { review: Review; ownerUserId: string | null }) {
   const username = review.user_email?.split("@")[0] ?? "Anonymous";
   const initials = review.user_email ? avatarInitials(review.user_email) : "?";
+  const isPlaceOwner = ownerUserId != null && review.user_id === ownerUserId;
 
   return (
     <div className="bg-card border border-border rounded-2xl px-5 py-4">
@@ -543,7 +544,14 @@ function ReviewCard({ review }: { review: Review }) {
             <span className="text-xs font-bold text-foreground">{initials}</span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">{username}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">{username}</p>
+              {isPlaceOwner && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20">
+                  Place Owner
+                </span>
+              )}
+            </div>
             {review.created_at && (
               <p className="text-xs text-muted-foreground">{formatDate(review.created_at)}</p>
             )}
@@ -554,7 +562,7 @@ function ReviewCard({ review }: { review: Review }) {
             <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((s) =>
                 review.rating! >= s ? (
-                  <PubSolid key={s} size={14} className="text-primary" />
+                  <PubLine key={s} size={14} className="text-primary" />
                 ) : (
                   <PubLine key={s} size={14} className="text-muted-foreground/30" />
                 )
@@ -601,9 +609,9 @@ function OpenStatusBadge({ hours }: { hours: OpeningHours }) {
   const open = isOpenNow(hours);
   return (
     <span
-      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${open ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"}`}
+      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${open ? "bg-open/10 text-open" : "bg-muted text-muted-foreground"}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${open ? "bg-green-500" : "bg-muted-foreground"}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${open ? "bg-open" : "bg-muted-foreground"}`} />
       {open ? "Open" : "Closed"}
     </span>
   );

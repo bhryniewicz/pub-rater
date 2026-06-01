@@ -104,6 +104,7 @@ export const MapMarkerSchema = z.object({
   outdoor_seating: z.boolean().nullable(),
   voivodeship: z.string().nullable(),
   opening_hours: OpeningHoursSchema.nullable(),
+  app_rating: z.number().nullable(),
 })
 
 // Matches the pub_list view (markers JOIN places) — used for the sidebar list
@@ -157,6 +158,7 @@ export const ReviewSchema = z.object({
 export const ProfilePreferencesSchema = z.object({
   bar_preference: z.boolean(),
   pub_preference: z.boolean(),
+  automatic_zoom: z.boolean().default(true),
 })
 
 export const ProfileSchema = z.object({
@@ -214,9 +216,21 @@ const LocationRequestBase = z.object({
   id: z.string(),
   status: LocationRequestStatus,
   requested_by: z.string().nullable(),
+  requester_email: z.string().nullable(),
+  requester_name: z.string().nullable(),
   created_at: z.string(),
   description: z.string().nullable(),
+  admin_comment: z.string().nullable(),
 })
+
+export const ReviewActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('approve'), id: z.string() }),
+  z.object({
+    action: z.literal('reject'),
+    id: z.string(),
+    comment: z.string().trim().min(1, 'An explanation is required when rejecting').max(1000, 'Max 1000 characters'),
+  }),
+])
 
 export const PlaceRequestSchema = LocationRequestBase.extend({
   type: z.literal('place_request'),

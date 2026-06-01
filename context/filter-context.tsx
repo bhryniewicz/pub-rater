@@ -28,8 +28,14 @@ type FilterState = {
   setFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
   likedFilterActive: boolean;
   setLikedFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
+  ownedFilterActive: boolean;
+  setOwnedFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
   openFilterActive: boolean;
   setOpenFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
+  openLateFilterActive: boolean;
+  setOpenLateFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
+  minRatingFilter: number | null;
+  setMinRatingFilter: (v: number | null) => void;
   voivodeshipFilter: string | null;
   setVoivodeshipFilter: (v: string | null) => void;
   radiusFilter: number | null;
@@ -48,9 +54,22 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("likedFilterActive") === "1";
   });
+  const [ownedFilterActive, setOwnedFilterActive] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("ownedFilterActive") === "1";
+  });
   const [openFilterActive, setOpenFilterActive] = useState(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("openFilterActive") === "1";
+  });
+  const [openLateFilterActive, setOpenLateFilterActive] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("openLateFilterActive") === "1";
+  });
+  const [minRatingFilter, setMinRatingFilter] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const v = sessionStorage.getItem("minRatingFilter");
+    return v ? Number(v) : null;
   });
   const [voivodeshipFilter, setVoivodeshipFilter] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -71,8 +90,24 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   }, [likedFilterActive]);
 
   useEffect(() => {
+    sessionStorage.setItem("ownedFilterActive", ownedFilterActive ? "1" : "0");
+  }, [ownedFilterActive]);
+
+  useEffect(() => {
     sessionStorage.setItem("openFilterActive", openFilterActive ? "1" : "0");
   }, [openFilterActive]);
+
+  useEffect(() => {
+    sessionStorage.setItem("openLateFilterActive", openLateFilterActive ? "1" : "0");
+  }, [openLateFilterActive]);
+
+  useEffect(() => {
+    if (minRatingFilter !== null) {
+      sessionStorage.setItem("minRatingFilter", String(minRatingFilter));
+    } else {
+      sessionStorage.removeItem("minRatingFilter");
+    }
+  }, [minRatingFilter]);
 
   useEffect(() => {
     if (voivodeshipFilter) {
@@ -99,8 +134,14 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
         setFilterActive,
         likedFilterActive,
         setLikedFilterActive,
+        ownedFilterActive,
+        setOwnedFilterActive,
         openFilterActive,
         setOpenFilterActive,
+        openLateFilterActive,
+        setOpenLateFilterActive,
+        minRatingFilter,
+        setMinRatingFilter,
         voivodeshipFilter,
         setVoivodeshipFilter,
         radiusFilter,

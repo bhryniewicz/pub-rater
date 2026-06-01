@@ -9,7 +9,7 @@ export async function approveRequest(id: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
 
   const { data: req, error: fetchError } = await supabase
-    .from('location_requests')
+    .from('requests')
     .select('*')
     .eq('id', id)
     .single()
@@ -17,7 +17,6 @@ export async function approveRequest(id: string): Promise<void> {
   if (fetchError || !req) throw fetchError ?? new Error('Request not found')
 
   if (req.type === 'owner_claim') {
-    // Assign owner_id on the existing marker
     const { error: ownerError } = await supabase
       .from('markers')
       .update({ owner_id: req.requested_by })
@@ -26,7 +25,7 @@ export async function approveRequest(id: string): Promise<void> {
     if (ownerError) throw ownerError
 
     const { error: updateError } = await supabase
-      .from('location_requests')
+      .from('requests')
       .update({ status: 'approved' })
       .eq('id', id)
 
@@ -70,7 +69,7 @@ export async function approveRequest(id: string): Promise<void> {
   if (placeError) throw placeError
 
   const { error: updateError } = await supabase
-    .from('location_requests')
+    .from('requests')
     .update({ status: 'approved' })
     .eq('id', id)
 
@@ -86,13 +85,14 @@ export async function approveRequest(id: string): Promise<void> {
   })
 }
 
-export async function rejectRequest(id: string): Promise<void> {
+export async function rejectRequest(params: { id: string; comment: string }): Promise<void> {
   if (!(await getIsAdmin())) throw new Error('Forbidden')
 
+  const { id, comment } = params
   const supabase = await createServerSupabaseClient()
 
   const { data: req, error: fetchError } = await supabase
-    .from('location_requests')
+    .from('requests')
     .select('requested_by, name, type, description')
     .eq('id', id)
     .single()
@@ -100,21 +100,19 @@ export async function rejectRequest(id: string): Promise<void> {
   if (fetchError || !req) throw fetchError ?? new Error('Request not found')
 
   const { error } = await supabase
-    .from('location_requests')
-    .update({ status: 'rejected' })
+    .from('requests')
+    .update({ status: 'rejected', admin_comment: comment })
     .eq('id', id)
 
   if (error) throw error
 
-  // No rejection notification for owner claims
-  if (req.type === 'owner_claim') return
-
   await supabase.from('notifications').insert({
     user_id: req.requested_by,
     type: 'rejected',
-    request_type: 'place_request',
+    request_type: req.type,
     request_id: id,
-    request_name: req.name,
+    request_name: req.type === 'owner_claim' ? (req.description ?? 'Ownership claim') : req.name,
     marker_id: null,
+    message: comment,
   })
 }

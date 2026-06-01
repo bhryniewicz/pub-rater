@@ -103,7 +103,7 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
     mutationFn: (values: AddPlaceValues & { opening_hours: OpeningHours | null }) =>
       requestPlace(values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["location_requests"] });
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
       handleClose(false);
       toast.success("Request submitted", {
         description: "An admin will review your suggestion shortly.",

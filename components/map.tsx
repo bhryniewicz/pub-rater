@@ -12,7 +12,6 @@ import Map, {
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase, type MapMarker, type Place } from "@/lib/supabase";
 import {
-  PubSolid,
   PubLine,
   BarSolid,
   BiergartenSolid,
@@ -38,6 +37,7 @@ type ClusterItem =
       lat: number;
       lon: number;
       dominantAmenity: string;
+      topColors: string[];
     };
 
 function centroid(pubs: MapMarker[]) {
@@ -131,22 +131,26 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
         if (half.pubs.length === 1) {
           items.push({ type: "pub", pub: half.pubs[0] });
         } else {
+          const da = dominantAmenity(half.pubs);
           items.push({
             type: "cluster",
             count: half.pubs.length,
             lat: half.lat,
             lon: half.lon,
-            dominantAmenity: dominantAmenity(half.pubs),
+            dominantAmenity: da,
+            topColors: da === "mixed" ? topAmenityColors(half.pubs) : [amenityColor(da)],
           });
         }
       }
     } else {
+      const da = dominantAmenity(cell.pubs);
       items.push({
         type: "cluster",
         count: cell.pubs.length,
         lat: cell.lat,
         lon: cell.lon,
-        dominantAmenity: dominantAmenity(cell.pubs),
+        dominantAmenity: da,
+        topColors: da === "mixed" ? topAmenityColors(cell.pubs) : [amenityColor(da)],
       });
     }
   }
@@ -167,7 +171,7 @@ function AmenityIcon({
     case "restaurant":
     case "cafe":
     case "nightclub":
-      return <PubSolid size={size} color={color} />;
+      return <PubLine size={size} color={color} />;
     case "bar":
       return <BarSolid size={size} color={color} />;
     case "biergarten":
@@ -203,12 +207,28 @@ function dominantAmenity(pubs: MapMarker[]): string {
   return top[0];
 }
 
+function topAmenityColors(pubs: MapMarker[], n = 3): string[] {
+  const counts: Record<string, number> = {};
+  for (const p of pubs) {
+    counts[p.amenity] = (counts[p.amenity] ?? 0) + 1;
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([amenity]) => amenityColor(amenity));
+}
+
+function mixedGradient(colors: string[]): string {
+  return `linear-gradient(to right, ${colors.join(", ")})`;
+}
+
 
 interface Props {
   markers: MapMarker[];
   focusedMarker?: { id: string; lat: number; lon: number } | null;
   userLocation?: { lat: number; lon: number } | null;
   active?: boolean;
+  automaticZoom?: boolean;
 }
 
 export default function MapComponent({
@@ -216,6 +236,7 @@ export default function MapComponent({
   focusedMarker,
   userLocation,
   active,
+  automaticZoom = true,
 }: Props) {
   const { resolvedTheme } = useTheme();
   const mapStyle =
@@ -265,14 +286,14 @@ export default function MapComponent({
   }, [focusedMarker]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!mapLoaded || !userLocation || hasFocusedUser.current) return;
+    if (!mapLoaded || !userLocation || hasFocusedUser.current || !automaticZoom) return;
     hasFocusedUser.current = true;
     mapRef.current?.flyTo({
       center: [userLocation.lon, userLocation.lat],
       zoom: 13,
       duration: 1500,
     });
-  }, [mapLoaded, userLocation]);
+  }, [mapLoaded, userLocation, automaticZoom]);
 
   useEffect(() => {
     if (!active) return;
@@ -313,7 +334,9 @@ export default function MapComponent({
       {items.map((item, i) => {
         if (item.type === "cluster") {
           const label = item.count > 99 ? "99+" : `${item.count}`;
-          const bg = amenityColor(item.dominantAmenity);
+          const isMixed = item.dominantAmenity === "mixed" && item.topColors.length > 1;
+          const bg = isMixed ? mixedGradient(item.topColors) : amenityColor(item.dominantAmenity);
+          const shadowColor = item.topColors[0];
           return (
             <Marker
               key={`cluster-${i}`}
@@ -325,7 +348,7 @@ export default function MapComponent({
                 <div
                   style={{
                     background: bg,
-                    boxShadow: `0 0 0 4px ${bg}55`,
+                    boxShadow: `0 0 0 4px ${shadowColor}55`,
                   }}
                   className="w-[34px] h-[34px] rounded-xl flex items-center justify-center cursor-pointer"
                 >
@@ -362,9 +385,9 @@ export default function MapComponent({
                   ? `0 0 0 6px ${bg}77`
                   : `0 0 0 4px ${bg}55`,
               }}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
+              className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
             >
-              <AmenityIcon amenity={pub.amenity} size={20} />
+              <AmenityIcon amenity={pub.amenity} size={16} />
             </div>
           </Marker>
         );
@@ -423,7 +446,7 @@ export default function MapComponent({
                               className="absolute top-0 left-0 bottom-0 overflow-hidden"
                               style={{ width: "50%" }}
                             >
-                              <PubSolid size={14} color="#facc15" />
+                              <PubLine size={14} color="#facc15" />
                             </span>
                           </span>
                         );
@@ -434,7 +457,7 @@ export default function MapComponent({
                           className="inline-flex items-center justify-center w-[14px] h-[14px]"
                         >
                           {full ? (
-                            <PubSolid size={14} color="#facc15" />
+                            <PubLine size={14} color="#facc15" />
                           ) : (
                             <PubLine size={14} color="#6b7280" />
                           )}

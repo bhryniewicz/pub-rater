@@ -26,6 +26,8 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-open: var(--open);
+  --color-closed: var(--closed);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -73,6 +75,8 @@
   --chart-3: #EEDB8C;
   --chart-4: #FBF2C6;
   --chart-5: #3A6E3A;
+  --open: #4a6e20;
+  --closed: #c84535;
   --radius: 0.625rem;
   --sidebar: #F3E3A4;
   --sidebar-foreground: #2B1A08;
@@ -117,6 +121,8 @@
   --sidebar-accent-foreground: #F4E9D4;
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: #D49658;
+  --open: #80b840;
+  --closed: #d97058;
 }
 
 .mapboxgl-popup-content {

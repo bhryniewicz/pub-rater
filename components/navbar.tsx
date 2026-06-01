@@ -2,12 +2,24 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { SearchBar } from "@/components/search-bar";
 import { AddPlaceDialog } from "@/components/add-place-dialog";
-import { LuUser, LuBuilding2, LuSun, LuMoon, LuMenu, LuX, LuMapPin, LuLayoutDashboard, LuLogIn, LuUserPlus } from "react-icons/lu";
+import {
+  LuUser,
+  LuBuilding2,
+  LuSun,
+  LuMoon,
+  LuMenu,
+  LuX,
+  LuMapPin,
+  LuLayoutDashboard,
+  LuLogIn,
+  LuUserPlus,
+} from "react-icons/lu";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
@@ -29,8 +41,10 @@ export function Navbar() {
         setMenuOpen(false);
       }
     }
-    if (menuOpen) document.addEventListener("mousedown", handleClickOutsideMenu);
-    return () => document.removeEventListener("mousedown", handleClickOutsideMenu);
+    if (menuOpen)
+      document.addEventListener("mousedown", handleClickOutsideMenu);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutsideMenu);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -100,7 +114,9 @@ export function Navbar() {
             <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
               <LuUser size={17} className="text-muted-foreground" />
             </div>
-            <span className="font-semibold text-foreground text-sm">User zone</span>
+            <span className="font-semibold text-foreground text-sm">
+              User zone
+            </span>
           </div>
           <Link
             href="/login"
@@ -124,7 +140,9 @@ export function Navbar() {
             <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
               <LuBuilding2 size={17} className="text-muted-foreground" />
             </div>
-            <span className="font-semibold text-foreground text-sm">Owner zone</span>
+            <span className="font-semibold text-foreground text-sm">
+              Owner zone
+            </span>
           </div>
           <Link
             href="/owner/login"
@@ -165,12 +183,21 @@ export function Navbar() {
     <>
       <header className="px-4 md:px-12 bg-background shrink-0">
         {/* Row 1: logo + auth — relative anchor for the mobile overlay */}
-        <div ref={menuRef} className="relative flex items-center gap-2 pt-6 pb-4">
-          <div className="h-11 flex items-center gap-1.5 shrink-0">
-            <span className="text-xl">🍺</span>
-            <h1 className="font-semibold text-foreground">
-              <Link href="/">Pub Rater</Link>
-            </h1>
+        <div
+          ref={menuRef}
+          className="relative flex items-center gap-2 pt-6 pb-4"
+        >
+          <div className="h-12 flex items-center shrink-0">
+            <Link href="/" aria-label="Pub Rater">
+              <Image
+                src="/pub-rater-logo.png"
+                alt="Pub Rater"
+                height={80}
+                width={160}
+                className="h-18 w-auto object-contain"
+                priority
+              />
+            </Link>
           </div>
           {/* Desktop: search bar in the middle */}
           <div className="hidden md:flex flex-1 justify-center px-4 min-w-0">
@@ -231,10 +258,16 @@ export function Navbar() {
               >
                 {/* Theme switch row */}
                 <button
-                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                  onClick={() =>
+                    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                  }
                   className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 >
-                  {mounted && resolvedTheme === "dark" ? <LuSun size={16} /> : <LuMoon size={16} />}
+                  {mounted && resolvedTheme === "dark" ? (
+                    <LuSun size={16} />
+                  ) : (
+                    <LuMoon size={16} />
+                  )}
                   <span className="flex-1 text-left">Dark mode</span>
                   <span
                     className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${mounted && resolvedTheme === "dark" ? "bg-primary" : "bg-muted"}`}
