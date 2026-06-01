@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { approveRequest, rejectRequest } from "@/app/actions/review-request";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +49,18 @@ export function OwnershipClaimsPane() {
     queryKey: ["owner_claims"],
     queryFn: fetchOwnerClaims,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin:owner_claims")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "requests", filter: "type=eq.owner_claim" },
+        () => { queryClient.invalidateQueries({ queryKey: ["owner_claims"] }); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const approveMutation = useMutation({
     mutationFn: approveRequest,

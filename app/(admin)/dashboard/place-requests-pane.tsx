@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { approveRequest, rejectRequest } from "@/app/actions/review-request";
 import { supabase } from "@/lib/supabase";
@@ -73,6 +73,18 @@ export function PlaceRequestsPane() {
     queryKey: ["place_requests"],
     queryFn: fetchPlaceRequests,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin:place_requests")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "requests", filter: "type=eq.place_request" },
+        () => { queryClient.invalidateQueries({ queryKey: ["place_requests"] }); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const approveMutation = useMutation({
     mutationFn: approveRequest,
