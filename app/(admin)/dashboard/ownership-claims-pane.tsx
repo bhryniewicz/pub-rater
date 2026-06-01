@@ -72,7 +72,7 @@ export function OwnershipClaimsPane() {
   const selectedIdx = selected ? claims.findIndex((c) => c.id === selected.id) : 0;
   const isBusy =
     (approveMutation.isPending && approveMutation.variables === selected?.id) ||
-    (rejectMutation.isPending && rejectMutation.variables === selected?.id);
+    (rejectMutation.isPending && rejectMutation.variables?.id === selected?.id);
 
   function selectItem(id: string) {
     setSelectedId(id);
@@ -224,7 +224,7 @@ export function OwnershipClaimsPane() {
           </div>
         )}
         {((approveMutation.isError && approveMutation.variables === selected.id) ||
-          (rejectMutation.isError && rejectMutation.variables === selected.id)) && (
+          (rejectMutation.isError && rejectMutation.variables?.id === selected.id)) && (
           <p className="text-sm text-red-500 mt-3">Action failed. Please try again.</p>
         )}
       </div>

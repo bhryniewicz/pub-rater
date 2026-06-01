@@ -107,7 +107,7 @@ export function PlaceRequestsPane() {
   const selectedIdx = selected ? requests.findIndex((r) => r.id === selected.id) : 0;
   const isBusy =
     (approveMutation.isPending && approveMutation.variables === selected?.id) ||
-    (rejectMutation.isPending && rejectMutation.variables === selected?.id);
+    (rejectMutation.isPending && rejectMutation.variables?.id === selected?.id);
 
   const filterTabs: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: "All", count: requests.length },
@@ -192,7 +192,7 @@ export function PlaceRequestsPane() {
         </div>
         {/* Map */}
         <div className="w-full h-44 rounded-xl overflow-hidden mb-5 relative border border-border">
-          <RequestMiniMap lat={selected.lat} lon={selected.lon} amenity={selected.amenity} />
+          <RequestMiniMap lat={selected.lat} lon={selected.lon} />
           <span className="absolute bottom-3 left-3 text-xs text-white/60 font-mono bg-black/40 px-1.5 py-0.5 rounded pointer-events-none">
             {selected.lat.toFixed(6)}, {selected.lon.toFixed(6)}
           </span>
@@ -292,7 +292,7 @@ export function PlaceRequestsPane() {
           </div>
         )}
         {((approveMutation.isError && approveMutation.variables === selected.id) ||
-          (rejectMutation.isError && rejectMutation.variables === selected.id)) && (
+          (rejectMutation.isError && rejectMutation.variables?.id === selected.id)) && (
           <p className="text-sm text-red-500 mt-3">Action failed. Please try again.</p>
         )}
       </div>
