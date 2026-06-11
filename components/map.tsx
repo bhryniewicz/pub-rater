@@ -223,6 +223,10 @@ function mixedGradient(colors: string[]): string {
 }
 
 
+// Persists viewport across remounts (e.g. locale switch). Module-level singleton
+// survives React unmount/remount; resets only on full page reload.
+let _savedViewport = { longitude: 19.374227, latitude: 52.188527, zoom: 5.7 };
+
 interface Props {
   markers: MapMarker[];
   focusedMarker?: { id: string; lat: number; lon: number } | null;
@@ -245,14 +249,16 @@ export default function MapComponent({
       : `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_LIGHT}`;
 
   const mapRef = useRef<MapRef>(null);
-  const [zoom, setZoom] = useState(7);
+  const [initialViewState] = useState(() => ({ ..._savedViewport }));
+  const [zoom, setZoom] = useState(_savedViewport.zoom);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [loadingPlace, setLoadingPlace] = useState(false);
   const hasFocusedUser = useRef(false);
 
-  const onZoom = useCallback((e: { viewState: { zoom: number } }) => {
+  const onMove = useCallback((e: { viewState: { longitude: number; latitude: number; zoom: number } }) => {
+    _savedViewport = { longitude: e.viewState.longitude, latitude: e.viewState.latitude, zoom: e.viewState.zoom };
     setZoom(e.viewState.zoom);
   }, []);
 
@@ -313,16 +319,12 @@ export default function MapComponent({
   return (
     <Map
       ref={mapRef}
-      initialViewState={{
-        longitude: 19.374227,
-        latitude: 52.188527,
-        zoom: 5.7,
-      }}
+      initialViewState={initialViewState}
       style={{ width: "100%", height: "100%" }}
       mapStyle={mapStyle}
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
       onLoad={() => setMapLoaded(true)}
-      onZoom={onZoom}
+      onMove={onMove}
       minZoom={5}
       onClick={() => {
         setSelectedMarker(null);
@@ -352,7 +354,7 @@ export default function MapComponent({
                   }}
                   className="w-[34px] h-[34px] rounded-xl flex items-center justify-center cursor-pointer"
                 >
-                  <AmenityIcon amenity={item.dominantAmenity} size={18} />
+                  <AmenityIcon amenity={item.dominantAmenity} size={18} color="white" />
                 </div>
                 <div
                   className={`absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
@@ -387,7 +389,7 @@ export default function MapComponent({
               }}
               className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
             >
-              <AmenityIcon amenity={pub.amenity} size={16} />
+              <AmenityIcon amenity={pub.amenity} size={16} color="white" />
             </div>
           </Marker>
         );

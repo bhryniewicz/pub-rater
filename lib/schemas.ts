@@ -152,6 +152,12 @@ export const ReviewSchema = z.object({
   rating: z.number().nullable(),
   comment: z.string().nullable(),
   created_at: z.string().nullable(),
+  atmosphere: z.number().nullable(),
+  service: z.number().nullable(),
+  space: z.number().nullable(),
+  price_tier: z.number().nullable(),
+  additional_info: z.array(z.string()).nullable(),
+  thumbs_ups: z.array(z.string()).default([]),
 })
 
 // Matches the profiles table — created on signup, updated during onboarding
@@ -189,11 +195,7 @@ export type Amenity = typeof AMENITIES[number]
 
 // Review submission form
 export const ReviewFormSchema = z.object({
-  comment: z
-    .string()
-    .trim()
-    .min(1, 'Comment is required')
-    .max(1000, 'Max 1000 characters'),
+  comment: z.string().trim().max(1000, 'Max 1000 characters').optional(),
   rating: z
     .number({ invalid_type_error: 'Please select a rating' })
     .min(1, 'Please select a rating')
@@ -210,7 +212,7 @@ export type Profile = z.infer<typeof ProfileSchema>
 export type ReviewFormValues = z.infer<typeof ReviewFormSchema>
 
 // Location request (submitted by users, reviewed by admin)
-export const LocationRequestStatus = z.enum(['pending', 'approved', 'rejected'])
+export const LocationRequestStatus = z.enum(['pending', 'approved', 'rejected', 'need_more_info'])
 
 const LocationRequestBase = z.object({
   id: z.string(),
@@ -229,6 +231,11 @@ export const ReviewActionSchema = z.discriminatedUnion('action', [
     action: z.literal('reject'),
     id: z.string(),
     comment: z.string().trim().min(1, 'An explanation is required when rejecting').max(1000, 'Max 1000 characters'),
+  }),
+  z.object({
+    action: z.literal('need_more_info'),
+    id: z.string(),
+    comment: z.string().trim().min(1, 'A message is required').max(1000, 'Max 1000 characters'),
   }),
 ])
 

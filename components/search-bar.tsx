@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAllMarkers, type MapMarker } from "@/lib/supabase";
 import { useSearch } from "@/context/search-context";
@@ -18,10 +19,9 @@ import {
   LuSearch,
   LuSlidersHorizontal,
   LuCrosshair,
-  LuX,
   LuChevronUp,
 } from "react-icons/lu";
-import { motion, AnimatePresence } from "framer-motion";
+import { Drawer } from "@/components/ui/drawer";
 
 const AMENITY_ICONS: Record<string, string> = {
   pub: "🍺",
@@ -41,15 +41,16 @@ const AMENITY_COLORS: Record<string, string> = {
   biergarten: "#16a34a",
 };
 
-const RATING_OPTIONS: { label: string; value: number | null }[] = [
-  { label: "Any", value: null },
-  { label: "3.0 ★ +", value: 3 },
-  { label: "3.5 ★ +", value: 3.5 },
-  { label: "4.0 ★ +", value: 4 },
-  { label: "4.5 ★ +", value: 4.5 },
-];
-
 export function SearchBar() {
+  const t = useTranslations("searchBar");
+
+  const RATING_OPTIONS: { label: string; value: number | null }[] = [
+    { label: t("ratingAny"), value: null },
+    { label: "3.0 ★ +", value: 3 },
+    { label: "3.5 ★ +", value: 3.5 },
+    { label: "4.0 ★ +", value: 4 },
+    { label: "4.5 ★ +", value: 4.5 },
+  ];
   const [input, setInput] = useState("");
   const [debouncedInput, setDebouncedInput] = useState("");
   const [open, setOpen] = useState(false);
@@ -200,17 +201,6 @@ export function SearchBar() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (filtersOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [filtersOpen]);
-
   const isActive = !!searchQuery || !!searchSelectedId;
   // hasActiveFilters reflects *applied* filters (context), not pending
   const hasActiveFilters =
@@ -243,7 +233,7 @@ export function SearchBar() {
               setFiltersOpen(false);
             }
           }}
-          placeholder="Search places…"
+          placeholder={t("placeholder")}
           className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-sm min-w-0"
         />
         {input && (
@@ -264,7 +254,7 @@ export function SearchBar() {
               ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
               : "bg-primary text-primary-foreground hover:bg-primary/90"
           }`}
-          aria-label="More filters"
+          aria-label={t("moreFilters")}
         >
           <LuSlidersHorizontal size={14} />
         </button>
@@ -280,7 +270,7 @@ export function SearchBar() {
             <CommandList>
               {suggestions.length === 0 ? (
                 <CommandEmpty className="text-muted-foreground text-xs py-4">
-                  No results for &quot;{debouncedInput}&quot;
+                  {t("noResults", { query: debouncedInput })}
                 </CommandEmpty>
               ) : (
                 <>
@@ -310,7 +300,7 @@ export function SearchBar() {
                     className="border-t border-border text-muted-foreground text-xs px-3 py-2.5 cursor-pointer"
                   >
                     <LuSearch className="w-3.5 h-3.5 shrink-0" />
-                    Show all results for &quot;{debouncedInput}&quot;
+                    {t("showAllResults", { query: debouncedInput })}
                   </CommandItem>
                 </>
               )}
@@ -320,48 +310,28 @@ export function SearchBar() {
       )}
 
       {/* Filters drawer */}
-      <AnimatePresence>
-        {filtersOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/50"
-              onClick={() => setFiltersOpen(false)}
-            />
-            {/* Panel — full-width on mobile, right-side drawer on desktop */}
-            <motion.div
-              key="panel"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
-              className="fixed inset-y-0 right-0 z-50 w-full md:max-w-sm bg-background flex flex-col shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
-                <button
-                  onClick={() => setFiltersOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <LuX size={18} />
-                </button>
-                <span className="text-primary font-bold text-base">Filters</span>
-                <button
-                  onClick={clearPendingFilters}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Clear filters
-                </button>
-              </div>
-
-              {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <Drawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title={t("filters")}
+        headerAction={
+          <button
+            onClick={clearPendingFilters}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("clearFilters")}
+          </button>
+        }
+        footer={
+          <button
+            onClick={handleApplyFilters}
+            className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base"
+          >
+            {t("showPlaces")}
+          </button>
+        }
+      >
+        <div className="px-4 py-5 flex flex-col gap-7">
 
                 {/* My spots + Liked places */}
                 {user && (
@@ -374,7 +344,7 @@ export function SearchBar() {
                           : "border-border text-muted-foreground hover:border-foreground/20"
                       }`}
                     >
-                      <span>📍</span> My spots
+                      <span>📍</span> {t("mySpots")}
                     </button>
                     <button
                       onClick={() => setPendingLikedFilterActive((v) => !v)}
@@ -384,7 +354,7 @@ export function SearchBar() {
                           : "border-border text-muted-foreground hover:border-foreground/20"
                       }`}
                     >
-                      <span>🤍</span> Liked places
+                      <span>🤍</span> {t("likedPlaces")}
                     </button>
                   </div>
                 )}
@@ -393,7 +363,7 @@ export function SearchBar() {
                 {sortedCategories.length > 0 && (
                   <div className="md:hidden">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-bold text-foreground text-sm">Place type</span>
+                      <span className="font-bold text-foreground text-sm">{t("placeType")}</span>
                       <LuChevronUp size={16} className="text-muted-foreground" />
                     </div>
                     <div className="flex flex-col gap-2">
@@ -439,7 +409,7 @@ export function SearchBar() {
                 {/* Minimum rating */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-foreground text-sm">Minimum rating</span>
+                    <span className="font-bold text-foreground text-sm">{t("minRating")}</span>
                     <LuChevronUp size={16} className="text-muted-foreground" />
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -462,7 +432,7 @@ export function SearchBar() {
                 {/* Opening hours */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-foreground text-sm">Opening hours</span>
+                    <span className="font-bold text-foreground text-sm">{t("openingHours")}</span>
                     <LuChevronUp size={16} className="text-muted-foreground" />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -477,10 +447,10 @@ export function SearchBar() {
                             pendingOpenFilterActive ? "text-open" : "text-foreground"
                           }`}
                         >
-                          Open now
+                          {t("openNow")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Only places open at this moment
+                          {t("openNowDesc")}
                         </p>
                       </div>
                       <Switch
@@ -500,10 +470,10 @@ export function SearchBar() {
                             pendingOpenLateFilterActive ? "text-open" : "text-foreground"
                           }`}
                         >
-                          Open late
+                          {t("openLate")}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Serving after midnight
+                          {t("openLateDesc")}
                         </p>
                       </div>
                       <Switch
@@ -518,7 +488,7 @@ export function SearchBar() {
                 {/* Location */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-foreground text-sm">Location</span>
+                    <span className="font-bold text-foreground text-sm">{t("location")}</span>
                     <LuChevronUp size={16} className="text-muted-foreground" />
                   </div>
                   <div className="flex flex-col gap-3">
@@ -527,7 +497,7 @@ export function SearchBar() {
                       onChange={(e) => setPendingVoivodeshipFilter(e.target.value || null)}
                       className="w-full bg-input border border-border text-foreground text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-ring appearance-none cursor-pointer"
                     >
-                      <option value="">All voivodeships</option>
+                      <option value="">{t("allVoivodeships")}</option>
                       {VOIVODESHIPS.map((v) => (
                         <option key={v.key} value={v.key}>
                           {v.label}
@@ -553,7 +523,7 @@ export function SearchBar() {
                         }`}
                       >
                         <LuCrosshair size={14} />
-                        {geoStatus === "loading" ? "Locating…" : "Near me"}
+                        {geoStatus === "loading" ? t("locating") : t("nearMe")}
                       </button>
                       {pendingRadiusFilter !== null && geoCoords && (
                         <select
@@ -571,21 +541,8 @@ export function SearchBar() {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-border shrink-0">
-                <button
-                  onClick={handleApplyFilters}
-                  className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base"
-                >
-                  Show places
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        </div>
+      </Drawer>
     </div>
   );
 }

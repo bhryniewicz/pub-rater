@@ -14,23 +14,30 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
 
   const supabase = await createServerSupabaseClient()
 
-  // Verify the place exists and has no owner
-  const { data: marker, error: markerError } = await supabase
-    .from('markers')
-    .select('id, owner_id')
-    .eq('id', parsed.data.marker_id)
-    .single()
+  // Verify the place exists and has no owner — fetch full details for the request row
+  const [{ data: marker, error: markerError }, { data: place }] = await Promise.all([
+    supabase
+      .from('markers')
+      .select('id, name, amenity, lat, lon, owner_id')
+      .eq('id', parsed.data.marker_id)
+      .single(),
+    supabase
+      .from('places')
+      .select('address, opening_hours')
+      .eq('marker_id', parsed.data.marker_id)
+      .maybeSingle(),
+  ])
 
   if (markerError || !marker) throw new Error('Place not found')
   if (marker.owner_id) throw new Error('Place already has an owner')
 
-  // Check no pending claim already exists for this place
+  // Check no pending or need_more_info claim already exists for this place
   const { data: existing } = await supabase
     .from('requests')
     .select('id')
     .eq('marker_id', parsed.data.marker_id)
     .eq('type', 'owner_claim')
-    .eq('status', 'pending')
+    .in('status', ['pending', 'need_more_info'])
     .maybeSingle()
 
   if (existing) throw new Error('A pending claim already exists for this place')
@@ -43,6 +50,12 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
     requested_by: user.id,
     requester_email: user.email ?? null,
     requester_name: (user.user_metadata?.display_name as string | undefined) ?? null,
+    name: marker.name,
+    amenity: marker.amenity,
+    lat: marker.lat,
+    lon: marker.lon,
+    address: place?.address ?? null,
+    opening_hours: place?.opening_hours ?? null,
   })
 
   if (error) throw error

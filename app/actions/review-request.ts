@@ -85,6 +85,38 @@ export async function approveRequest(id: string): Promise<void> {
   })
 }
 
+export async function requestMoreInfo(params: { id: string; comment: string }): Promise<void> {
+  if (!(await getIsAdmin())) throw new Error('Forbidden')
+
+  const { id, comment } = params
+  const supabase = await createServerSupabaseClient()
+
+  const { data: req, error: fetchError } = await supabase
+    .from('requests')
+    .select('requested_by, name, type, description')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !req) throw fetchError ?? new Error('Request not found')
+
+  const { error } = await supabase
+    .from('requests')
+    .update({ status: 'need_more_info', admin_comment: comment })
+    .eq('id', id)
+
+  if (error) throw error
+
+  await supabase.from('notifications').insert({
+    user_id: req.requested_by,
+    type: 'need_more_info',
+    request_type: req.type,
+    request_id: id,
+    request_name: req.type === 'owner_claim' ? (req.description ?? 'Ownership claim') : req.name,
+    marker_id: null,
+    message: comment,
+  })
+}
+
 export async function rejectRequest(params: { id: string; comment: string }): Promise<void> {
   if (!(await getIsAdmin())) throw new Error('Forbidden')
 

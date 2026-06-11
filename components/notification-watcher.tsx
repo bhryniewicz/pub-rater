@@ -8,10 +8,11 @@ import { useUser } from "@/hooks/use-user";
 
 type Notification = {
   id: string;
-  type: "approved" | "rejected";
+  type: "approved" | "rejected" | "need_more_info";
   request_type: "place_request" | "owner_claim";
   request_name: string;
   marker_id: string | null;
+  message: string | null;
 };
 
 function fireToast(n: Notification, onView: (markerId: string) => void) {
@@ -33,6 +34,16 @@ function fireToast(n: Notification, onView: (markerId: string) => void) {
           }
         : {}),
     });
+  } else if (n.type === "need_more_info") {
+    toast.info(
+      n.request_type === "owner_claim"
+        ? "More info needed for your ownership claim"
+        : "More info needed for your place request",
+      {
+        description: n.message ?? "An admin has requested additional information. Check your profile.",
+        duration: 8000,
+      }
+    );
   } else {
     toast.error(`Your ${label} was rejected`, {
       description: "The request was not accepted by an admin.",
@@ -52,7 +63,7 @@ export function NotificationWatcher() {
     async function showUnread() {
       const { data } = await supabase
         .from("notifications")
-        .select("id, type, request_type, request_name, marker_id")
+        .select("id, type, request_type, request_name, marker_id, message")
         .eq("user_id", userId)
         .eq("read", false)
         .order("created_at", { ascending: true });

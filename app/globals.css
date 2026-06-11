@@ -138,14 +138,31 @@
   display: none;
 }
 
+/* Outside @layer — beats Tailwind utilities in the cascade */
+.font-thin, .font-extralight, .font-light,
+.font-bold, .font-extrabold, .font-black {
+  font-weight: 400;
+}
+
+/* Pub/venue names: remove extra tracking */
+.pub-name {
+  letter-spacing: 0.1em;
+}
+
+/* Explicit mono tracking — apply where uppercase + letter-spacing is wanted */
+.mono-label {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-mono font-normal;
   }
   html {
-    @apply font-sans;
+    @apply font-mono;
   }
 }

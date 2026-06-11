@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/lib/navigation";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 const AGE_GATE_KEY = "pub-rater-age-verified";
 
 export function AgeGate() {
+  const t = useTranslations("ageGate");
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -37,17 +39,16 @@ export function AgeGate() {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent showCloseButton={false} className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Age Verification</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            This site contains alcohol-related content. You must be 18 or older
-            to continue.
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={handleDeny}>
-            No, I&apos;m under 18
+            {t("deny")}
           </Button>
-          <Button onClick={handleConfirm}>Yes, I&apos;m 18+</Button>
+          <Button onClick={handleConfirm}>{t("confirm")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

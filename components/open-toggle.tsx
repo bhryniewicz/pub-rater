@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useFilters } from "@/context/filter-context";
 
 export function OpenToggle({ className }: { className?: string }) {
+  const t = useTranslations("openToggle");
   const { openFilterActive, setOpenFilterActive } = useFilters();
 
   return (
@@ -17,7 +19,7 @@ export function OpenToggle({ className }: { className?: string }) {
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        All
+        {t("all")}
       </button>
       <button
         onClick={() => setOpenFilterActive(true)}
@@ -28,7 +30,7 @@ export function OpenToggle({ className }: { className?: string }) {
         }`}
       >
         <span className="w-1.5 h-1.5 rounded-full bg-open shrink-0" />
-        Open
+        {t("open")}
       </button>
     </div>
   );
