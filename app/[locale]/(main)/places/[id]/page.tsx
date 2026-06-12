@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/lib/navigation";
 import { Link } from "@/lib/navigation";
 import { useTranslations } from "next-intl";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, type Place, type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS, type OpeningHours } from "@/lib/opening-hours";
 import { useUser } from "@/hooks/use-user";
@@ -16,39 +16,8 @@ import { ClaimForm } from "./claim-form";
 import { EditPlaceDialog } from "./edit-place-dialog";
 import { Button } from "@/components/ui/button";
 import { GuestCheckDialog, type GuestCheckValues } from "@/components/guest-check-dialog";
-
-type MarkerInfo = {
-  id: string;
-  name: string;
-  amenity: string;
-  lat: number;
-  lon: number;
-  owner_id: string | null;
-};
-
-async function fetchPlaceData(markerId: string) {
-  const [markerRes, placeRes, reviewsRes] = await Promise.all([
-    supabase
-      .from("markers")
-      .select("id, name, amenity, lat, lon, owner_id")
-      .eq("id", markerId)
-      .single(),
-    supabase.from("places").select("*, short_code").eq("marker_id", markerId).single(),
-    supabase
-      .from("reviews")
-      .select("*")
-      .eq("marker_id", markerId)
-      .order("created_at", { ascending: false }),
-  ]);
-
-  if (markerRes.error || !markerRes.data) throw new Error("Place not found");
-
-  return {
-    marker: markerRes.data as MarkerInfo,
-    place: placeRes.data as Place | null,
-    reviews: (reviewsRes.data ?? []) as Review[],
-  };
-}
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { usePlace, type MarkerInfo, type PlaceData } from "@/hooks/places/use-place";
 
 function avatarInitials(email: string): string {
   return email.split("@")[0].slice(0, 2).toUpperCase();
@@ -61,8 +30,6 @@ function formatDate(iso: string): string {
     year: "numeric",
   });
 }
-
-// DAY_LABELS built inside component with translations
 
 export default function PlaceDetailPage() {
   const t = useTranslations("places");
@@ -101,14 +68,8 @@ export default function PlaceDetailPage() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["place", id],
-    queryFn: () => fetchPlaceData(id),
-  });
-
-  useEffect(() => {
-    if (isError) router.push("/");
-  }, [isError, router]);
+  const { data } = usePlace(id);
+  const { marker, place, reviews } = data;
 
   const commentMutation = useMutation({
     mutationFn: async (values: GuestCheckValues) => {
@@ -132,27 +93,15 @@ export default function PlaceDetailPage() {
       return review as Review;
     },
     onSuccess: (newReview) => {
-      queryClient.setQueryData(["place", id], (old: typeof data) => {
+      queryClient.setQueryData(QUERY_KEYS.PLACE(id), (old: PlaceData | undefined) => {
         if (!old) return old;
         return { ...old, reviews: [newReview, ...old.reviews] };
       });
-      queryClient.invalidateQueries({ queryKey: ["pub_list"] });
-      queryClient.invalidateQueries({ queryKey: ["markers"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
       setRateOpen(false);
     },
   });
-
-  if (isLoading) {
-    return (
-      <main className="flex items-center justify-center flex-1 bg-background">
-        <p className="text-muted-foreground text-sm">{tCommon("loading")}</p>
-      </main>
-    );
-  }
-
-  if (isError || !data) return null;
-
-  const { marker, place, reviews } = data;
 
   const commentReviews = reviews.filter((r) => r.comment);
 
@@ -163,7 +112,7 @@ export default function PlaceDetailPage() {
       : null);
 
   const ratingCounts = [5, 4, 3, 2, 1].map(
-    (star) => reviews.filter((r) => r.rating === star).length
+    (star) => reviews.filter((r) => r.rating === star).length,
   );
   const maxCount = Math.max(...ratingCounts, 1);
 
@@ -174,7 +123,6 @@ export default function PlaceDetailPage() {
   return (
     <main className="flex-1 overflow-y-auto bg-background">
       <div className="max-w-6xl mx-auto px-6 py-8">
-
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-6">
           <Link href="/" className="hover:text-foreground transition-colors">{t("home")}</Link>
@@ -190,25 +138,20 @@ export default function PlaceDetailPage() {
 
         {/* Hero */}
         <div className="grid grid-cols-5 gap-6 mb-8 bg-card border border-border rounded-2xl p-8">
-          {/* Left: title + tags */}
           <div className="col-span-3 flex flex-col gap-4">
             <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {marker.amenity}
             </div>
             <h1 className="pub-name text-4xl font-black text-foreground leading-tight">{marker.name}</h1>
-            {/* No description field in DB — placeholder container */}
             <p className="text-sm text-muted-foreground leading-relaxed">
               {t("noDescription")}
             </p>
-            {/* Feature tags — no DB field, placeholder */}
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 rounded-full bg-secondary border border-border text-xs font-medium text-muted-foreground capitalize">
                 {marker.amenity}
               </span>
             </div>
           </div>
-
-          {/* Right: rating */}
           <div className="col-span-2">
             <div className="flex items-end gap-3 mb-3">
               <span className="text-6xl font-black text-primary leading-none">
@@ -221,15 +164,16 @@ export default function PlaceDetailPage() {
                       <PubLine key={s} size={18} className="text-primary" />
                     ) : (
                       <PubLine key={s} size={18} className="text-muted-foreground/40" />
-                    )
+                    ),
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {reviews.length !== 1 ? t("reviewsPlural", { count: reviews.length }) : t("reviews", { count: reviews.length })}
+                  {reviews.length !== 1
+                    ? t("reviewsPlural", { count: reviews.length })
+                    : t("reviews", { count: reviews.length })}
                 </p>
               </div>
             </div>
-            {/* Rating breakdown */}
             <div className="space-y-1.5">
               {[5, 4, 3, 2, 1].map((star, i) => (
                 <div key={star} className="flex items-center gap-2">
@@ -253,7 +197,6 @@ export default function PlaceDetailPage() {
 
         {/* Main content grid */}
         <div className="grid grid-cols-5 gap-6">
-
           {/* Left: comments */}
           <div className="col-span-3">
             <div className="flex items-end justify-between mb-6">
@@ -284,7 +227,6 @@ export default function PlaceDetailPage() {
               </div>
             </div>
 
-            {/* Rate dialog */}
             <GuestCheckDialog
               open={rateOpen}
               onOpenChange={setRateOpen}
@@ -297,7 +239,6 @@ export default function PlaceDetailPage() {
               isError={commentMutation.isError}
             />
 
-            {/* Reviews list */}
             {commentReviews.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("noComments")}</p>
             ) : (
@@ -325,8 +266,6 @@ export default function PlaceDetailPage() {
 
           {/* Right: sidebar */}
           <div className="col-span-2 space-y-4">
-
-            {/* Place details */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
                 {t("placeDetails")}
@@ -350,7 +289,6 @@ export default function PlaceDetailPage() {
                     ) : null
                   }
                 />
-                {/* Fields not yet in DB — containers shown empty */}
                 <SidebarRow label={t("instagram")} value={null} />
                 <SidebarRow label={t("price")} value={null} />
                 <SidebarRow label={t("founded")} value={null} />
@@ -359,7 +297,6 @@ export default function PlaceDetailPage() {
               </div>
             </div>
 
-            {/* Hours */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -392,7 +329,6 @@ export default function PlaceDetailPage() {
               )}
             </div>
 
-            {/* Amenities */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
                 {t("amenities")}
@@ -400,7 +336,6 @@ export default function PlaceDetailPage() {
               <p className="text-xs text-muted-foreground">{t("noAmenities")}</p>
             </div>
 
-            {/* Get there */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
                 {t("getThere")}
@@ -423,7 +358,6 @@ export default function PlaceDetailPage() {
               </div>
             </div>
 
-            {/* Edit button — admin always, owner only if they own this place */}
             {(isAdmin || (isOwner && marker.owner_id === user?.id)) && (
               <button
                 onClick={() => setEditOpen(true)}
@@ -434,11 +368,9 @@ export default function PlaceDetailPage() {
               </button>
             )}
 
-            {/* Claim form — owner/admin only if place has no owner */}
             {(isOwner || isAdmin) && !marker.owner_id && (
               <ClaimForm markerId={marker.id} />
             )}
-
           </div>
         </div>
       </div>
@@ -486,44 +418,45 @@ function ReviewCard({
       return data as string[];
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["place", markerId] });
-      const previous = queryClient.getQueryData(["place", markerId]);
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.PLACE(markerId) });
+      const previous = queryClient.getQueryData(QUERY_KEYS.PLACE(markerId));
       const optimistic = hasThumbedUp
         ? thumbsUps.filter((id) => id !== userId)
         : [...thumbsUps, userId!];
-      queryClient.setQueryData(["place", markerId], (old: { marker: MarkerInfo; place: Place | null; reviews: Review[] } | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          reviews: old.reviews.map((r) =>
-            r.id === review.id ? { ...r, thumbs_ups: optimistic } : r
-          ),
-        };
-      });
+      queryClient.setQueryData(
+        QUERY_KEYS.PLACE(markerId),
+        (old: PlaceData | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            reviews: old.reviews.map((r) =>
+              r.id === review.id ? { ...r, thumbs_ups: optimistic } : r,
+            ),
+          };
+        },
+      );
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["place", markerId], context.previous);
+        queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), context.previous);
       }
     },
     onSuccess: (newThumbsUps) => {
-      queryClient.setQueryData(["place", markerId], (old: { marker: MarkerInfo; place: Place | null; reviews: Review[] } | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          reviews: old.reviews.map((r) =>
-            r.id === review.id ? { ...r, thumbs_ups: newThumbsUps } : r
-          ),
-        };
-      });
+      queryClient.setQueryData(
+        QUERY_KEYS.PLACE(markerId),
+        (old: PlaceData | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            reviews: old.reviews.map((r) =>
+              r.id === review.id ? { ...r, thumbs_ups: newThumbsUps } : r,
+            ),
+          };
+        },
+      );
     },
   });
-
-  function handleThumbsUp() {
-    if (!userId) return;
-    thumbsMutation.mutate();
-  }
 
   return (
     <div className="bg-card border border-border rounded-2xl px-5 py-4">
@@ -554,7 +487,7 @@ function ReviewCard({
                   <PubLine key={s} size={14} className="text-primary" />
                 ) : (
                   <PubLine key={s} size={14} className="text-muted-foreground/30" />
-                )
+                ),
               )}
             </div>
             <span className="text-xs font-bold text-muted-foreground ml-1">{review.rating}.0</span>
@@ -566,19 +499,16 @@ function ReviewCard({
         <p className="text-sm text-foreground leading-relaxed mb-3">{review.comment}</p>
       )}
 
-      {/* Tags — no DB field, container shown empty */}
       <div className="flex flex-wrap gap-1.5 mb-3" />
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <button
-          onClick={handleThumbsUp}
+          onClick={() => thumbsMutation.mutate()}
           disabled={!userId || thumbsMutation.isPending}
           className={`flex items-center gap-1 transition-colors ${hasThumbedUp ? "text-primary font-semibold" : "hover:text-foreground"} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <LuThumbsUp className="w-3.5 h-3.5" />
-          {thumbsUps.length > 0 && (
-            <span className="ml-0.5">{thumbsUps.length}</span>
-          )}
+          {thumbsUps.length > 0 && <span className="ml-0.5">{thumbsUps.length}</span>}
         </button>
         <button className="hover:text-foreground transition-colors">{t("reply")}</button>
         <button className="hover:text-foreground transition-colors ml-auto">{t("report")}</button>

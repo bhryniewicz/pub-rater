@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editPlace } from "@/app/actions/edit-place";
 import { EditPlaceSchema, type EditPlaceValues, type OpeningHours } from "@/lib/schemas";
+import { QUERY_KEYS } from "@/lib/query-keys";
 import type { Place } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,9 +122,9 @@ export function EditPlaceDialog({
   const mutation = useMutation({
     mutationFn: (values: EditPlaceValues) => editPlace(markerId, values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place", markerId] });
-      queryClient.invalidateQueries({ queryKey: ["pub_list"] });
-      queryClient.invalidateQueries({ queryKey: ["markers"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE(markerId) });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
       toast.success("Place updated successfully.");
       onOpenChange(false);
     },

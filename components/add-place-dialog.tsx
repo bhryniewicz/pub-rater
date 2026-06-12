@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestPlace } from "@/app/actions/request-place";
+import { QUERY_KEYS } from "@/lib/query-keys";
 import {
   AddPlaceSchema,
   type AddPlaceValues,
@@ -195,7 +196,7 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
       values: AddPlaceValues & { opening_hours: OpeningHours | null },
     ) => requestPlace(values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.REQUESTS });
       handleClose(false);
       toast.success("Request submitted", {
         description: "An admin will review your suggestion shortly.",

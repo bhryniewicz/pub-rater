@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema } from "@/lib/schemas";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { useAdminCounts } from "@/hooks/admin/use-admin-counts";
+import { useRecentRequests } from "@/hooks/admin/use-recent-requests";
+import { useUsers, type AdminUser } from "@/hooks/admin/use-users";
+import { type LocationRequest } from "@/lib/schemas";
 import { PlaceRequestsPane } from "./place-requests-pane";
 import { OwnershipClaimsPane } from "./ownership-claims-pane";
 import {
@@ -27,56 +31,6 @@ type Section =
   | "ownership_claims"
   | "comments"
   | "users";
-
-async function fetchCounts() {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const [pendingRes, todayRes, weekRes, totalOwnerClaimsRes] =
-    await Promise.all([
-      supabase.from("requests").select("type, status").eq("status", "pending"),
-      supabase
-        .from("requests")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", todayStart.toISOString()),
-      supabase.rpc("count_new_users_by_week"),
-      supabase
-        .from("requests")
-        .select("id", { count: "exact", head: true })
-        .eq("type", "owner_claim"),
-    ]);
-
-  if (pendingRes.error) throw pendingRes.error;
-  if (todayRes.error) throw todayRes.error;
-  if (weekRes.error) throw weekRes.error;
-  if (totalOwnerClaimsRes.error) throw totalOwnerClaimsRes.error;
-
-  const rows = pendingRes.data ?? [];
-  const weekData = weekRes.data?.[0] ?? { this_week: 0, last_week: 0 };
-  const thisWeek = Number(weekData.this_week);
-  const lastWeek = Number(weekData.last_week);
-  const weekDelta = thisWeek - lastWeek;
-
-  return {
-    placeRequests: rows.filter((r) => r.type === "place_request").length,
-    ownerClaims: rows.filter((r) => r.type === "owner_claim").length,
-    totalOwnerClaims: totalOwnerClaimsRes.count ?? 0,
-    todayRequests: todayRes.count ?? 0,
-    newUsersThisWeek: thisWeek,
-    newUsersWeekDelta: weekDelta,
-  };
-}
-
-async function fetchAllRequests() {
-  const { data, error } = await supabase
-    .from("requests")
-    .select("*")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-    .limit(5);
-  if (error) throw error;
-  return (data ?? []).map((row) => LocationRequestSchema.parse(row));
-}
 
 // ── Nav item ─────────────────────────────────────────────────────────────────
 
@@ -120,13 +74,17 @@ function OverviewSection({
   ownerClaimCount,
   totalOwnerClaims,
   newUsersThisWeek,
+  newUsersWeekDelta,
+  todayRequestCount,
   recentRequests,
 }: {
   placeRequestCount: number;
   ownerClaimCount: number;
   totalOwnerClaims: number;
   newUsersThisWeek: number;
-  recentRequests: ReturnType<typeof LocationRequestSchema.parse>[];
+  newUsersWeekDelta: number;
+  todayRequestCount: number;
+  recentRequests: LocationRequest[];
 }) {
   const t = useTranslations("admin");
 
@@ -164,18 +122,32 @@ function OverviewSection({
           {
             value: placeRequestCount + ownerClaimCount,
             icon: <LuMapPin size={20} />,
+            label: t("pendingRequests"),
+            sub: t("todayCount", { count: todayRequestCount }),
+            subColor: "text-amber-400",
           },
           {
             value: totalOwnerClaims,
             icon: <LuShield size={20} />,
+            label: t("ownershipClaims"),
+            sub: t("awaitingCount", { count: ownerClaimCount }),
+            subColor: "text-blue-400",
           },
           {
             value: 12,
             icon: <LuMessageSquare size={20} />,
+            label: t("flaggedComments"),
+            sub: null,
+            subColor: "",
           },
           {
             value: newUsersThisWeek,
             icon: <LuUsers size={20} />,
+            label: t("newUsersWk"),
+            sub: newUsersWeekDelta === 0
+              ? t("sameAsLastWk")
+              : t("vsLastWk", { delta: newUsersWeekDelta > 0 ? `+${newUsersWeekDelta}` : String(newUsersWeekDelta) }),
+            subColor: newUsersWeekDelta > 0 ? "text-green-400" : newUsersWeekDelta < 0 ? "text-red-400" : "text-muted-foreground",
           },
         ].map((kpi, i) => (
           <div
@@ -184,6 +156,10 @@ function OverviewSection({
           >
             <div className="text-primary mb-3">{kpi.icon}</div>
             <p className="text-3xl font-bold text-foreground">{kpi.value}</p>
+            <p className="text-xs font-medium text-foreground mt-1">{kpi.label}</p>
+            {kpi.sub && (
+              <p className={`text-xs mt-0.5 ${kpi.subColor}`}>{kpi.sub}</p>
+            )}
           </div>
         ))}
       </div>
@@ -588,22 +564,6 @@ function CommentsSection() {
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
-type AdminUser = {
-  id: string;
-  email: string;
-  created_at: string;
-  role: string;
-  avatar_url: string | null;
-  is_onboarded: boolean;
-  banned: boolean;
-};
-
-async function fetchUsers(): Promise<AdminUser[]> {
-  const { data, error } = await supabase.rpc("fetch_users");
-  if (error) throw error;
-  return (data ?? []) as AdminUser[];
-}
-
 const ROLES = ["user", "owner", "admin"] as const;
 type UserRole = (typeof ROLES)[number];
 
@@ -672,10 +632,7 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
   const queryClient = useQueryClient();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ["users"],
-    queryFn: fetchUsers,
-  });
+  const { data: users } = useUsers();
 
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: UserRole }) => {
@@ -685,7 +642,7 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS }),
   });
 
   const banMutation = useMutation({
@@ -698,7 +655,7 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
     },
     onSuccess: () => {
       setPendingAction(null);
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS });
     },
   });
 
@@ -709,7 +666,7 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
     },
     onSuccess: () => {
       setPendingAction(null);
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS });
     },
   });
 
@@ -764,16 +721,7 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
                 </tr>
               </thead>
               <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="text-center py-8 text-muted-foreground text-xs"
-                    >
-                      {t("loadingUsers")}
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
+                {users.length === 0 ? (
                   <tr>
                     <td
                       colSpan={4}
@@ -908,15 +856,8 @@ export function AdminConsole() {
 
   const queryClient = useQueryClient();
 
-  const { data: counts } = useQuery({
-    queryKey: ["admin_counts"],
-    queryFn: fetchCounts,
-  });
-
-  const { data: recentRequests = [] } = useQuery({
-    queryKey: ["recent_requests"],
-    queryFn: fetchAllRequests,
-  });
+  const { data: counts } = useAdminCounts();
+  const { data: recentRequests } = useRecentRequests();
 
   useEffect(() => {
     const channel = supabase
@@ -925,25 +866,23 @@ export function AdminConsole() {
         "postgres_changes",
         { event: "*", schema: "public", table: "requests" },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["admin_counts"] });
-          queryClient.invalidateQueries({ queryKey: ["recent_requests"] });
-          queryClient.invalidateQueries({ queryKey: ["place_requests"] });
-          queryClient.invalidateQueries({ queryKey: ["owner_claims"] });
-        }
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_COUNTS });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECENT_REQUESTS });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS });
+        },
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const placeRequestCount = counts?.placeRequests ?? 0;
-  const ownerClaimCount = counts?.ownerClaims ?? 0;
-  const totalOwnerClaims = counts?.totalOwnerClaims ?? 0;
-  const todayRequestCount = counts?.todayRequests ?? 0;
-  const newUsersThisWeek = counts?.newUsersThisWeek ?? 0;
-  const newUsersWeekDelta = counts?.newUsersWeekDelta ?? 0;
+  const placeRequestCount = counts.placeRequests;
+  const ownerClaimCount = counts.ownerClaims;
+  const totalOwnerClaims = counts.totalOwnerClaims;
+  const todayRequestCount = counts.todayRequests;
+  const newUsersThisWeek = counts.newUsersThisWeek;
+  const newUsersWeekDelta = counts.newUsersWeekDelta;
   const commentCount = 12;
-
-  console.log(counts?.newUsersThisWeek, "?");
 
   const navItems: {
     key: Section;
@@ -1057,33 +996,44 @@ export function AdminConsole() {
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar — mobile hamburger only */}
-        <header className="h-14 px-4 shrink-0 flex items-center gap-3 md:hidden">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 -ml-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            aria-label={t("openMenu")}
-          >
-            <LuMenu size={20} />
-          </button>
-        </header>
-
         {/* Section content */}
         <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Mobile sidebar toggle — inline at top of content */}
+          <div className="md:hidden px-4 pt-3 pb-1 shrink-0">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-1.5 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={t("openMenu")}
+            >
+              <LuMenu size={20} />
+            </button>
+          </div>
           {section === "overview" && (
             <OverviewSection
               placeRequestCount={placeRequestCount}
               ownerClaimCount={ownerClaimCount}
               totalOwnerClaims={totalOwnerClaims}
               newUsersThisWeek={newUsersThisWeek}
+              newUsersWeekDelta={newUsersWeekDelta}
+              todayRequestCount={todayRequestCount}
               recentRequests={recentRequests}
             />
           )}
-          {section === "place_requests" && <PlaceRequestsPane />}
-          {section === "ownership_claims" && <OwnershipClaimsPane />}
+          {section === "place_requests" && (
+            <Suspense>
+              <PlaceRequestsPane />
+            </Suspense>
+          )}
+          {section === "ownership_claims" && (
+            <Suspense>
+              <OwnershipClaimsPane />
+            </Suspense>
+          )}
           {section === "comments" && <CommentsSection />}
           {section === "users" && (
-            <UsersSection currentUserId={currentUserId} />
+            <Suspense>
+              <UsersSection currentUserId={currentUserId} />
+            </Suspense>
           )}
         </div>
       </div>

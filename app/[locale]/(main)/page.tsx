@@ -12,7 +12,12 @@ import {
 } from "@tanstack/react-query";
 import PubList from "@/components/pub-list";
 import { AgeGate } from "@/components/age-gate";
-import { supabase, fetchAllMarkers, type PubListItem } from "@/lib/supabase";
+import {
+  supabase,
+  fetchAllMarkers,
+  fetchMarkersEnrichment,
+  type PubListItem,
+} from "@/lib/supabase";
 import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useSearch } from "@/context/search-context";
@@ -254,23 +259,39 @@ export default function Home() {
 
   const { data: mapMarkers = [], isSuccess: markersLoaded } = useQuery({
     queryKey: ["markers"],
-    queryFn: fetchAllMarkers,
+    queryFn: () => fetchAllMarkers(),
     staleTime: 5 * 60 * 1000,
   });
 
+  const needsEnrichment =
+    openFilterActive || openLateFilterActive || minRatingFilter !== null;
+
+  const { data: enrichment = {} } = useQuery({
+    queryKey: ["markers_enrichment"],
+    queryFn: fetchMarkersEnrichment,
+    staleTime: 5 * 60 * 1000,
+    enabled: needsEnrichment,
+  });
+
+  const enrichedMarkers = useMemo(() => {
+    if (!needsEnrichment || Object.keys(enrichment).length === 0)
+      return mapMarkers;
+    return mapMarkers.map((m) => ({ ...m, ...(enrichment[m.id] ?? {}) }));
+  }, [mapMarkers, enrichment, needsEnrichment]);
+
   const openIds = useMemo(() => {
-    if (!openFilterActive || mapMarkers.length === 0) return null;
-    return mapMarkers
+    if (!openFilterActive || enrichedMarkers.length === 0) return null;
+    return enrichedMarkers
       .filter((m) => m.opening_hours != null && isOpenNow(m.opening_hours))
       .map((m) => m.id);
-  }, [openFilterActive, mapMarkers]);
+  }, [openFilterActive, enrichedMarkers]);
 
   const openLateIds = useMemo(() => {
-    if (!openLateFilterActive || mapMarkers.length === 0) return null;
-    return mapMarkers
+    if (!openLateFilterActive || enrichedMarkers.length === 0) return null;
+    return enrichedMarkers
       .filter((m) => m.opening_hours != null && isOpenLate(m.opening_hours))
       .map((m) => m.id);
-  }, [openLateFilterActive, mapMarkers]);
+  }, [openLateFilterActive, enrichedMarkers]);
 
   const nearbyIds = useMemo(() => {
     if (radiusFilter === null || !userLocation || mapMarkers.length === 0)
@@ -286,7 +307,7 @@ export default function Home() {
 
   useEffect(() => {
     clearSearch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -384,7 +405,9 @@ export default function Home() {
     }
     if (minRatingFilter !== null) {
       markers = markers.filter(
-        (m) => m.app_rating !== null && m.app_rating >= minRatingFilter,
+        (m) =>
+          (enrichment[m.id]?.app_rating ?? null) !== null &&
+          (enrichment[m.id]?.app_rating ?? 0) >= minRatingFilter,
       );
     }
     if (nearbyIds !== null) {
@@ -405,6 +428,7 @@ export default function Home() {
     minRatingFilter,
     nearbyIds,
     mapMarkers,
+    enrichment,
     voivodeshipFilter,
     voivodeshipIds,
     searchQuery,
@@ -533,7 +557,9 @@ export default function Home() {
               className="flex flex-col items-center gap-1 shrink-0"
             >
               <div
-                style={ownedFilterActive ? { background: "#1d4ed8" } : undefined}
+                style={
+                  ownedFilterActive ? { background: "#1d4ed8" } : undefined
+                }
                 className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all ${
                   ownedFilterActive
                     ? "border-transparent text-white"
@@ -570,7 +596,9 @@ export default function Home() {
               }}
               onShowMap={() => setMobileView("map")}
               likedPlaces={likedPlaces}
-              onLikeToggle={user ? (id) => likeMutation.mutate(id) : toggleLocalLike}
+              onLikeToggle={
+                user ? (id) => likeMutation.mutate(id) : toggleLocalLike
+              }
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
               onLoadMore={fetchNextPage}

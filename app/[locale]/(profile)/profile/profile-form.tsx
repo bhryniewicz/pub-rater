@@ -3,16 +3,13 @@
 import { useState, useEffect } from "react";
 import { useSetLocale } from "@/components/intl-provider";
 import { useTranslations, useLocale } from "next-intl";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGeolocation } from "@/context/geolocation-context";
-import {
-  ReviewSchema,
-  LocationRequestSchema,
-  type Review,
-  type LocationRequest,
-  type PlaceRequest,
-} from "@/lib/schemas";
+import { type PlaceRequest } from "@/lib/schemas";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { useUserReviews } from "@/hooks/profile/use-user-reviews";
+import { useUserRequests } from "@/hooks/profile/use-user-requests";
 import { resubmitOwnerClaim } from "@/app/actions/resubmit-request";
 import { ResubmitPlaceDialog } from "@/components/resubmit-place-dialog";
 
@@ -220,7 +217,7 @@ export function ProfileForm({
       setExpandedClaimId(null);
       setClaimDescriptions((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
       setClaimErrors((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
-      queryClient.invalidateQueries({ queryKey: ["user_requests", userId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_REQUESTS(userId) });
     },
     onError: (_err, variables) => {
       setClaimErrors((prev) => ({ ...prev, [variables.requestId]: "Failed to submit. Please try again." }));
@@ -233,37 +230,14 @@ export function ProfileForm({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "requests", filter: `requested_by=eq.${userId}` },
-        () => { queryClient.invalidateQueries({ queryKey: ["user_requests", userId] }); }
+        () => { queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_REQUESTS(userId) }); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [userId, queryClient]);
 
-  const reviewsQuery = useQuery({
-    queryKey: ["user_reviews", userId],
-    queryFn: async (): Promise<Review[]> => {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((row) => ReviewSchema.parse(row));
-    },
-  });
-
-  const requestsQuery = useQuery({
-    queryKey: ["user_requests", userId],
-    queryFn: async (): Promise<LocationRequest[]> => {
-      const { data, error } = await supabase
-        .from("requests")
-        .select("*")
-        .eq("requested_by", userId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((row) => LocationRequestSchema.parse(row));
-    },
-  });
+  const { data: reviews } = useUserReviews(userId);
+  const { data: requests } = useUserRequests(userId);
 
   function toggle(key: keyof Preferences) {
     const next = { ...preferences, [key]: !preferences[key] };
@@ -299,9 +273,8 @@ export function ProfileForm({
   });
   const displayName = email.split("@")[0];
   const initials = displayName.slice(0, 2).toUpperCase();
-  const reviewCount = reviewsQuery.data?.length ?? 0;
-  const pendingCount =
-    requestsQuery.data?.filter((r) => r.status === "pending" || r.status === "need_more_info").length ?? 0;
+  const reviewCount = reviews.length;
+  const pendingCount = requests.filter((r) => r.status === "pending" || r.status === "need_more_info").length;
 
   const avatarEl = avatarUrl ? (
     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -355,7 +328,7 @@ export function ProfileForm({
           {[
             { value: "—", label: t("statsVenues") },
             { value: "—", label: t("statsRating") },
-            { value: reviewsQuery.isLoading ? "…" : reviewCount, label: t("statsReviews") },
+            { value: reviewCount, label: t("statsReviews") },
             { value: pendingCount, label: t("statsPending") },
           ].map(({ value, label }) => (
             <div key={label} className="rounded-xl bg-secondary/60 px-2 py-2.5 text-center">
@@ -440,11 +413,9 @@ export function ProfileForm({
             title={t("reviewsDone")}
             subtitle={t("yourPubRatings")}
             badge={
-              reviewsQuery.data ? (
-                <span className="text-xs font-semibold bg-secondary px-2 py-0.5 rounded-lg tabular-nums mr-1">
-                  {reviewCount}
-                </span>
-              ) : undefined
+              <span className="text-xs font-semibold bg-secondary px-2 py-0.5 rounded-lg tabular-nums mr-1">
+                {reviewCount}
+              </span>
             }
           />
           <MobileRow
@@ -453,11 +424,9 @@ export function ProfileForm({
             title={t("pendingRequests")}
             subtitle={t("placeSubmissions")}
             badge={
-              requestsQuery.data ? (
-                <span className="text-xs font-semibold bg-secondary px-2 py-0.5 rounded-lg tabular-nums mr-1">
-                  {requestsQuery.data.length}
-                </span>
-              ) : undefined
+              <span className="text-xs font-semibold bg-secondary px-2 py-0.5 rounded-lg tabular-nums mr-1">
+                {requests.length}
+              </span>
             }
           />
         </MobileSection>
@@ -610,13 +579,12 @@ export function ProfileForm({
                 {
                   icon: "⭐",
                   label: t("reviewsDone"),
-                  count: reviewsQuery.data ? reviewCount : undefined,
+                  count: reviewCount,
                 },
                 {
                   icon: "📋",
                   label: t("pendingRequests"),
-                  count:
-                    requestsQuery.data && pendingCount > 0 ? pendingCount : undefined,
+                  count: pendingCount > 0 ? pendingCount : undefined,
                 },
                 { icon: "⚡", label: t("subscription") },
               ] as { icon: string; label: string; count?: number }[]
@@ -678,11 +646,11 @@ export function ProfileForm({
 
               <div className="grid grid-cols-3 gap-3">
                 <StatCard
-                  value={reviewsQuery.isLoading ? "—" : reviewCount}
+                  value={reviewCount}
                   label={t("reviewsWritten")}
                 />
                 <StatCard
-                  value={requestsQuery.isLoading ? "—" : (requestsQuery.data?.length ?? 0)}
+                  value={requests.length}
                   label={t("requestsSubmitted")}
                 />
                 <StatCard value={pendingCount} label={t("pending")} />
@@ -835,31 +803,17 @@ export function ProfileForm({
                   </div>
                   <div>
                     <span className="font-semibold text-foreground text-sm">{t("pendingRequests")}</span>
-                    {requestsQuery.data && (
-                      <p className="text-xs text-muted-foreground">{t("pendingRequestsCount", { count: pendingCount })}</p>
-                    )}
+                    <p className="text-xs text-muted-foreground">{t("pendingRequestsCount", { count: pendingCount })}</p>
                   </div>
                 </div>
 
-                {requestsQuery.isLoading && (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-10 bg-secondary/50 rounded-lg animate-pulse" />
-                    ))}
-                  </div>
-                )}
-
-                {requestsQuery.isError && (
-                  <p className="text-sm text-red-500">{t("failedLoad")}</p>
-                )}
-
-                {requestsQuery.data && requestsQuery.data.length === 0 && (
+                {requests.length === 0 && (
                   <p className="text-sm text-muted-foreground">{t("noRequests")}</p>
                 )}
 
-                {requestsQuery.data && requestsQuery.data.length > 0 && (
+                {requests.length > 0 && (
                   <div className="max-h-96 overflow-y-auto space-y-0">
-                    {requestsQuery.data.map((req) => {
+                    {requests.map((req) => {
                       const label =
                         req.type === "owner_claim"
                           ? t("ownershipClaim")

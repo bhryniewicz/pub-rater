@@ -1,0 +1,17 @@
+export const QUERY_KEYS = {
+  MARKERS: ["markers"] as const,
+  MARKERS_ENRICHMENT: ["markers_enrichment"] as const,
+  OWNED_MARKERS: (userId: string) => ["owned_markers", userId] as const,
+  PROFILE: (userId: string) => ["profile", userId] as const,
+  PUB_LIST: "pub_list" as const,
+  PLACE: (id: string) => ["place", id] as const,
+  OWNED_PLACES: ["owned_places"] as const,
+  USER_REVIEWS: (userId: string) => ["user_reviews", userId] as const,
+  USER_REQUESTS: (userId: string) => ["user_requests", userId] as const,
+  REQUESTS: ["requests"] as const,
+  ADMIN_COUNTS: ["admin_counts"] as const,
+  RECENT_REQUESTS: ["recent_requests"] as const,
+  PLACE_REQUESTS: ["place_requests"] as const,
+  OWNER_CLAIMS: ["owner_claims"] as const,
+  USERS: ["users"] as const,
+} as const;

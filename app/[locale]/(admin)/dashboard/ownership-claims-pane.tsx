@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { approveRequest, rejectRequest, requestMoreInfo } from "@/app/actions/review-request";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema, ReviewActionSchema, type OwnerClaim } from "@/lib/schemas";
+import { ReviewActionSchema, type OwnerClaim } from "@/lib/schemas";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { useOwnerClaims } from "@/hooks/admin/use-owner-claims";
 import { LuCheck, LuX, LuArrowLeft, LuInfo } from "react-icons/lu";
 import dynamic from "next/dynamic";
 
@@ -17,16 +19,6 @@ const RequestMiniMap = dynamic(
 const DAY_LABELS: Record<string, string> = {
   mo: "Mon", tu: "Tue", we: "Wed", th: "Thu", fr: "Fri", sa: "Sat", su: "Sun",
 };
-
-async function fetchOwnerClaims(): Promise<OwnerClaim[]> {
-  const { data, error } = await supabase
-    .from("requests")
-    .select("*")
-    .eq("type", "owner_claim")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((row) => LocationRequestSchema.parse(row) as OwnerClaim);
-}
 
 function claimRef(idx: number) {
   return `CLM-${idx + 1}`;
@@ -62,10 +54,7 @@ export function OwnershipClaimsPane() {
   const [modalError, setModalError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const { data: claims = [], isLoading } = useQuery({
-    queryKey: ["owner_claims"],
-    queryFn: fetchOwnerClaims,
-  });
+  const { data: claims } = useOwnerClaims();
 
   useEffect(() => {
     const channel = supabase
@@ -73,7 +62,7 @@ export function OwnershipClaimsPane() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "requests", filter: "type=eq.owner_claim" },
-        () => { queryClient.invalidateQueries({ queryKey: ["owner_claims"] }); }
+        () => { queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS }); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -81,14 +70,14 @@ export function OwnershipClaimsPane() {
 
   const approveMutation = useMutation({
     mutationFn: approveRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["owner_claims"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS }),
   });
 
   const rejectMutation = useMutation({
     mutationFn: rejectRequest,
     onSuccess: () => {
       closeModal();
-      queryClient.invalidateQueries({ queryKey: ["owner_claims"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS });
     },
   });
 
@@ -96,8 +85,8 @@ export function OwnershipClaimsPane() {
     mutationFn: requestMoreInfo,
     onSuccess: () => {
       closeModal();
-      queryClient.invalidateQueries({ queryKey: ["owner_claims"] });
-      queryClient.invalidateQueries({ queryKey: ["admin_counts"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_COUNTS });
     },
   });
 
@@ -145,9 +134,7 @@ export function OwnershipClaimsPane() {
         <p className="text-xs text-muted-foreground mt-0.5">{t("verifyOwnership")}</p>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{tCommon("loading")}</div>
-        ) : claims.length === 0 ? (
+        {claims.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t("noClaims")}</div>
         ) : (
           <div className="grid grid-cols-2 gap-3 p-3">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSetLocale } from "@/components/intl-provider";
-import { Link, useRouter } from "@/lib/navigation";
+import { Link, useRouter, usePathname } from "@/lib/navigation";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/use-user";
@@ -26,10 +26,22 @@ import {
 } from "react-icons/lu";
 import { motion } from "framer-motion";
 
-export function Navbar() {
+type NavbarProps = {
+  isSearchVisible?: boolean;
+};
+
+export function Navbar({ isSearchVisible = true }: NavbarProps) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const setLocale = useSetLocale();
+  const pathname = usePathname();
+
+  const activeSegment = (() => {
+    const clean = pathname.startsWith(`/${locale}`)
+      ? pathname.slice(`/${locale}`.length)
+      : pathname;
+    return clean.split("/").filter(Boolean)[0] ?? null;
+  })();
   const { user, isAdmin, isOwner } = useUser();
   const { coords } = useGeolocation();
   const { resolvedTheme, setTheme } = useTheme();
@@ -39,6 +51,14 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  function menuLinkClass(segment: string) {
+    return `flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
+      activeSegment === segment
+        ? "bg-secondary text-foreground font-medium"
+        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+    }`;
+  }
 
   const menuContent = (
     <div className="px-4 py-5 flex flex-col gap-1">
@@ -103,7 +123,7 @@ export function Navbar() {
             <Link
               href="/dashboard"
               onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              className={menuLinkClass("dashboard")}
             >
               <LuLayoutDashboard size={16} />
               {t("dashboard")}
@@ -112,7 +132,7 @@ export function Navbar() {
           <Link
             href="/profile"
             onClick={() => setMenuOpen(false)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            className={menuLinkClass("profile")}
           >
             <LuUser size={16} />
             {t("profile")}
@@ -186,11 +206,13 @@ export function Navbar() {
           </div>
 
           {/* Search bar — desktop only, absolutely centered in navbar */}
-          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none">
-            <div className="w-full pointer-events-auto">
-              <SearchBar />
+          {isSearchVisible && (
+            <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none">
+              <div className="w-full pointer-events-auto">
+                <SearchBar />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Right controls */}
           <div className="flex items-center gap-2 ml-auto">
@@ -217,9 +239,11 @@ export function Navbar() {
         </div>
 
         {/* Search bar — mobile only */}
-        <div className="pb-5 md:hidden">
-          <SearchBar />
-        </div>
+        {isSearchVisible && (
+          <div className="pb-5 md:hidden">
+            <SearchBar />
+          </div>
+        )}
       </header>
 
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)}>

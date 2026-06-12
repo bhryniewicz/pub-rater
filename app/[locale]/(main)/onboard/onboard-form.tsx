@@ -5,6 +5,7 @@ import { useRouter } from "@/lib/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabase";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 type Preferences = {
   bar_preference: boolean;
@@ -28,7 +29,7 @@ export default function OnboardForm({ userId }: { userId: string }) {
         .eq("id", userId);
     },
     onSuccess: () => {
-      queryClient.setQueryData(["profile", userId], (old: Record<string, unknown> | null | undefined) =>
+      queryClient.setQueryData(QUERY_KEYS.PROFILE(userId), (old: Record<string, unknown> | null | undefined) =>
         old ? { ...old, is_onboarded: true } : old,
       );
       router.push("/");

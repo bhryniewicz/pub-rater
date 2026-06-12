@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/dal";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
@@ -15,12 +16,14 @@ export default async function ProfilePage() {
     .single();
 
   return (
-    <ProfileForm
-      userId={user.id}
-      email={user.email!}
-      createdAt={user.created_at}
-      preferences={profile?.preferences}
-      avatarUrl={profile?.avatar_url ?? null}
-    />
+    <Suspense>
+      <ProfileForm
+        userId={user.id}
+        email={user.email!}
+        createdAt={user.created_at}
+        preferences={profile?.preferences}
+        avatarUrl={profile?.avatar_url ?? null}
+      />
+    </Suspense>
   );
 }

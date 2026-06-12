@@ -1,41 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-
-type OwnedPlace = {
-  id: string;
-  name: string;
-  amenity: string;
-  city: string | null;
-  address: string | null;
-};
-
-async function fetchOwnedPlaces(): Promise<OwnedPlace[]> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return [];
-
-  const { data, error } = await supabase
-    .from("markers")
-    .select("id, name, amenity, places(city, address)")
-    .eq("owner_id", session.user.id)
-    .order("name");
-
-  if (error) throw error;
-
-  return (data ?? []).map((row) => {
-    const place = Array.isArray(row.places) ? row.places[0] : row.places;
-    return {
-      id: row.id,
-      name: row.name,
-      amenity: row.amenity,
-      city: place?.city ?? null,
-      address: place?.address ?? null,
-    };
-  });
-}
+import { useOwnedPlaces } from "@/hooks/places/use-owned-places";
 
 const AMENITY_LABELS: Record<string, string> = {
   pub: "Pub 🍺",
@@ -47,32 +12,9 @@ const AMENITY_LABELS: Record<string, string> = {
 };
 
 export function OwnedPlaces() {
-  const {
-    data: places,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["owned_places"],
-    queryFn: fetchOwnedPlaces,
-  });
+  const { data: places } = useOwnedPlaces();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-        Loading your places…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center py-16 text-red-500 text-sm">
-        Failed to load places.
-      </div>
-    );
-  }
-
-  if (!places || places.length === 0) {
+  if (places.length === 0) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
         No places assigned to your account yet.

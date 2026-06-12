@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { approveRequest, rejectRequest, requestMoreInfo } from "@/app/actions/review-request";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema, ReviewActionSchema, type PlaceRequest } from "@/lib/schemas";
+import { ReviewActionSchema, type PlaceRequest } from "@/lib/schemas";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { usePlaceRequests } from "@/hooks/admin/use-place-requests";
 import dynamic from "next/dynamic";
 import { LuCheck, LuX, LuArrowLeft, LuArrowUpDown, LuInfo } from "react-icons/lu";
 
@@ -28,16 +30,6 @@ const DAY_LABELS: Record<string, string> = {
 };
 
 type FilterTab = "all" | "pub" | "biergarten" | "needs_info";
-
-async function fetchPlaceRequests(): Promise<PlaceRequest[]> {
-  const { data, error } = await supabase
-    .from("requests")
-    .select("*")
-    .eq("type", "place_request")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((row) => LocationRequestSchema.parse(row) as PlaceRequest);
-}
 
 function reqRef(idx: number) {
   return `REQ-${2041 - idx}`;
@@ -76,10 +68,7 @@ export function PlaceRequestsPane() {
   const [modalError, setModalError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const { data: requests = [], isLoading } = useQuery({
-    queryKey: ["place_requests"],
-    queryFn: fetchPlaceRequests,
-  });
+  const { data: requests } = usePlaceRequests();
 
   useEffect(() => {
     const channel = supabase
@@ -87,7 +76,7 @@ export function PlaceRequestsPane() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "requests", filter: "type=eq.place_request" },
-        () => { queryClient.invalidateQueries({ queryKey: ["place_requests"] }); }
+        () => { queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS }); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -96,9 +85,9 @@ export function PlaceRequestsPane() {
   const approveMutation = useMutation({
     mutationFn: approveRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["place_requests"] });
-      queryClient.invalidateQueries({ queryKey: ["markers"] });
-      queryClient.invalidateQueries({ queryKey: ["pub_list"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
     },
   });
 
@@ -106,7 +95,7 @@ export function PlaceRequestsPane() {
     mutationFn: rejectRequest,
     onSuccess: () => {
       closeModal();
-      queryClient.invalidateQueries({ queryKey: ["place_requests"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
     },
   });
 
@@ -114,8 +103,8 @@ export function PlaceRequestsPane() {
     mutationFn: requestMoreInfo,
     onSuccess: () => {
       closeModal();
-      queryClient.invalidateQueries({ queryKey: ["place_requests"] });
-      queryClient.invalidateQueries({ queryKey: ["admin_counts"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_COUNTS });
     },
   });
 
@@ -176,9 +165,7 @@ export function PlaceRequestsPane() {
     <div className="flex flex-col overflow-hidden h-full">
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{tCommon("loading")}</div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">{t("noRequests")}</div>
         ) : (
           <div className="grid grid-cols-2 gap-3 p-3">

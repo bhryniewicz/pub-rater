@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllMarkers, type MapMarker } from "@/lib/supabase";
+import { type MapMarker, fetchAllMarkers } from "@/lib/supabase";
+import { QUERY_KEYS } from "@/lib/query-keys";
 import { useSearch } from "@/context/search-context";
 import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
 import { useGeolocation } from "@/context/geolocation-context";
@@ -124,8 +125,8 @@ export function SearchBar() {
   }, [searchQuery, searchSelectedId]);
 
   const { data: markers = [] } = useQuery({
-    queryKey: ["markers"],
-    queryFn: fetchAllMarkers,
+    queryKey: QUERY_KEYS.MARKERS,
+    queryFn: () => fetchAllMarkers(),
     staleTime: 5 * 60 * 1000,
   });
 

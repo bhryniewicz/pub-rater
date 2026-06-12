@@ -161,7 +161,7 @@ export default function PubList({
   const isFetchingRef = useRef(isFetchingNextPage);
   useEffect(() => {
     isFetchingRef.current = isFetchingNextPage;
-  });
+  }, [isFetchingNextPage]);
 
   const handleIntersect = useCallback(
     (entries: IntersectionObserverEntry[]) => {
