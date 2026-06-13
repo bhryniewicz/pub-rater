@@ -32,7 +32,7 @@ export async function resubmitPlaceRequest(payload: ResubmitPlacePayload): Promi
     .from('requests')
     .update({
       name: parsed.data.name,
-      amenity: parsed.data.amenity,
+      place_type: parsed.data.place_type,
       address: parsed.data.address ?? null,
       lat: parsed.data.lat,
       lon: parsed.data.lon,

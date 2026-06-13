@@ -5,8 +5,7 @@ import { useParams } from "next/navigation";
 import { useRouter } from "@/lib/navigation";
 import { Link } from "@/lib/navigation";
 import { useTranslations } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, type Place, type Review } from "@/lib/supabase";
+import { type Place, type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS, type OpeningHours } from "@/lib/opening-hours";
 import { useUser } from "@/hooks/use-user";
 import { useGeolocation } from "@/context/geolocation-context";
@@ -16,8 +15,9 @@ import { ClaimForm } from "./claim-form";
 import { EditPlaceDialog } from "./edit-place-dialog";
 import { Button } from "@/components/ui/button";
 import { GuestCheckDialog, type GuestCheckValues } from "@/components/guest-check-dialog";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import { usePlace, type MarkerInfo, type PlaceData } from "@/hooks/places/use-place";
+import { usePlace, type MarkerInfo, type PlaceData } from "@/features/places/api/get-place";
+import { useCreateReview } from "@/features/places/api/create-review";
+import { useToggleThumbsUp } from "@/features/places/api/toggle-thumbs-up";
 
 function avatarInitials(email: string): string {
   return email.split("@")[0].slice(0, 2).toUpperCase();
@@ -47,7 +47,6 @@ export default function PlaceDetailPage() {
   const router = useRouter();
   const { user, isOwner, isAdmin } = useUser();
   const { coords: userLocation } = useGeolocation();
-  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
@@ -71,37 +70,7 @@ export default function PlaceDetailPage() {
   const { data } = usePlace(id);
   const { marker, place, reviews } = data;
 
-  const commentMutation = useMutation({
-    mutationFn: async (values: GuestCheckValues) => {
-      const { data: review, error } = await supabase
-        .from("reviews")
-        .insert({
-          marker_id: id,
-          user_id: user!.id,
-          user_email: user!.email,
-          comment: values.comment.trim() || null,
-          rating: values.rating,
-          atmosphere: values.atmosphere > 0 ? values.atmosphere : null,
-          service: values.service > 0 ? values.service : null,
-          space: values.space > 0 ? values.space : null,
-          price_tier: values.priceTier,
-          additional_info: values.additionalInfo.length > 0 ? values.additionalInfo : null,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return review as Review;
-    },
-    onSuccess: (newReview) => {
-      queryClient.setQueryData(QUERY_KEYS.PLACE(id), (old: PlaceData | undefined) => {
-        if (!old) return old;
-        return { ...old, reviews: [newReview, ...old.reviews] };
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
-      setRateOpen(false);
-    },
-  });
+  const commentMutation = useCreateReview(id);
 
   const commentReviews = reviews.filter((r) => r.comment);
 
@@ -140,7 +109,7 @@ export default function PlaceDetailPage() {
         <div className="grid grid-cols-5 gap-6 mb-8 bg-card border border-border rounded-2xl p-8">
           <div className="col-span-3 flex flex-col gap-4">
             <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              {marker.amenity}
+              {marker.place_type}
             </div>
             <h1 className="pub-name text-4xl font-black text-foreground leading-tight">{marker.name}</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -148,7 +117,7 @@ export default function PlaceDetailPage() {
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 rounded-full bg-secondary border border-border text-xs font-medium text-muted-foreground capitalize">
-                {marker.amenity}
+                {marker.place_type}
               </span>
             </div>
           </div>
@@ -231,10 +200,10 @@ export default function PlaceDetailPage() {
               open={rateOpen}
               onOpenChange={setRateOpen}
               markerName={marker.name}
-              markerAmenity={marker.amenity}
+              markerPlaceType={marker.place_type}
               placeCity={place?.city}
               placeShortCode={place?.short_code}
-              onSubmit={(values: GuestCheckValues) => commentMutation.mutate(values)}
+              onSubmit={(values: GuestCheckValues) => commentMutation.mutate({ ...values, userId: user!.id, userEmail: user!.email! }, { onSuccess: () => setRateOpen(false) })}
               isPending={commentMutation.isPending}
               isError={commentMutation.isError}
             />
@@ -381,7 +350,7 @@ export default function PlaceDetailPage() {
           onOpenChange={setEditOpen}
           markerId={marker.id}
           markerName={marker.name}
-          markerAmenity={marker.amenity}
+          markerPlaceType={marker.place_type}
           place={place}
         />
       )}
@@ -401,62 +370,12 @@ function ReviewCard({
   markerId: string;
 }) {
   const t = useTranslations("places");
-  const queryClient = useQueryClient();
   const username = review.user_email?.split("@")[0] ?? "Anonymous";
   const initials = review.user_email ? avatarInitials(review.user_email) : "?";
   const isPlaceOwner = ownerUserId != null && review.user_id === ownerUserId;
   const thumbsUps = review.thumbs_ups ?? [];
   const hasThumbedUp = userId != null && thumbsUps.includes(userId);
-
-  const thumbsMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.rpc("toggle_thumbs_up", {
-        p_review_id: review.id,
-        p_user_id: userId!,
-      });
-      if (error) throw error;
-      return data as string[];
-    },
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.PLACE(markerId) });
-      const previous = queryClient.getQueryData(QUERY_KEYS.PLACE(markerId));
-      const optimistic = hasThumbedUp
-        ? thumbsUps.filter((id) => id !== userId)
-        : [...thumbsUps, userId!];
-      queryClient.setQueryData(
-        QUERY_KEYS.PLACE(markerId),
-        (old: PlaceData | undefined) => {
-          if (!old) return old;
-          return {
-            ...old,
-            reviews: old.reviews.map((r) =>
-              r.id === review.id ? { ...r, thumbs_ups: optimistic } : r,
-            ),
-          };
-        },
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), context.previous);
-      }
-    },
-    onSuccess: (newThumbsUps) => {
-      queryClient.setQueryData(
-        QUERY_KEYS.PLACE(markerId),
-        (old: PlaceData | undefined) => {
-          if (!old) return old;
-          return {
-            ...old,
-            reviews: old.reviews.map((r) =>
-              r.id === review.id ? { ...r, thumbs_ups: newThumbsUps } : r,
-            ),
-          };
-        },
-      );
-    },
-  });
+  const thumbsMutation = useToggleThumbsUp(markerId);
 
   return (
     <div className="bg-card border border-border rounded-2xl px-5 py-4">
@@ -503,7 +422,7 @@ function ReviewCard({
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <button
-          onClick={() => thumbsMutation.mutate()}
+          onClick={() => thumbsMutation.mutate({ reviewId: review.id, userId: userId!, thumbsUps, hasThumbedUp })}
           disabled={!userId || thumbsMutation.isPending}
           className={`flex items-center gap-1 transition-colors ${hasThumbedUp ? "text-primary font-semibold" : "hover:text-foreground"} disabled:opacity-50 disabled:cursor-not-allowed`}
         >

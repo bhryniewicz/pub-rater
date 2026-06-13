@@ -18,7 +18,7 @@ export async function requestPlace(payload: RequestPlacePayload): Promise<void> 
   const { error } = await supabase.from('requests').insert({
     type: 'place_request',
     name: parsed.data.name,
-    amenity: parsed.data.amenity,
+    place_type: parsed.data.place_type,
     address: parsed.data.address ?? null,
     lat: parsed.data.lat,
     lon: parsed.data.lon,

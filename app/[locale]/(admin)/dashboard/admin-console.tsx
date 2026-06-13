@@ -3,13 +3,15 @@
 import { Suspense, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { useAdminCounts } from "@/hooks/admin/use-admin-counts";
-import { useRecentRequests } from "@/hooks/admin/use-recent-requests";
-import { useUsers, type AdminUser } from "@/hooks/admin/use-users";
+import { useAdminCounts } from "@/features/admin/api/get-admin-counts";
+import { useRecentRequests } from "@/features/admin/api/get-recent-requests";
+import { useUsers, type AdminUser } from "@/features/admin/api/get-users";
+import { useUpdateUserRole, useBanUser, useDeleteUser } from "@/features/admin/api/update-user";
 import { type LocationRequest } from "@/lib/schemas";
+import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/lib/place-type";
 import { PlaceRequestsPane } from "./place-requests-pane";
 import { OwnershipClaimsPane } from "./ownership-claims-pane";
 import {
@@ -87,15 +89,6 @@ function OverviewSection({
   recentRequests: LocationRequest[];
 }) {
   const t = useTranslations("admin");
-
-  const AMENITY_LABELS: Record<string, { label: string; icon: string }> = {
-    pub: { label: "Pub", icon: "🍺" },
-    bar: { label: "Bar", icon: "🥂" },
-    restaurant: { label: "Restaurant", icon: "🍽️" },
-    cafe: { label: "Cafe", icon: "☕" },
-    nightclub: { label: "Nightclub", icon: "🎶" },
-    biergarten: { label: "Biergarten", icon: "🌻" },
-  };
 
   const STATUS_STYLES: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-400 border border-amber-500/20",
@@ -198,12 +191,9 @@ function OverviewSection({
                   </tr>
                 ) : (
                   recentRequests.map((req) => {
-                    const amenity =
-                      req.type === "place_request" ? (req.amenity ?? "") : "";
-                    const info = AMENITY_LABELS[amenity] ?? {
-                      label: amenity,
-                      icon: "📍",
-                    };
+                    const placeType =
+                      req.type === "place_request" ? (req.place_type ?? "") : "";
+                    const label = PLACE_TYPE_LABELS[placeType] ?? placeType;
                     return (
                       <tr
                         key={req.id}
@@ -215,9 +205,9 @@ function OverviewSection({
                             : `Claim: ${req.marker_id.slice(0, 8)}`}
                         </td>
                         <td className="px-3 py-3">
-                          {amenity && (
+                          {placeType && (
                             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-secondary border border-border text-foreground">
-                              {info.icon} {info.label}
+                              <PlaceTypeIcon placeType={placeType} size={12} /> {label}
                             </span>
                           )}
                         </td>
@@ -629,46 +619,12 @@ function ConfirmDialog({
 function UsersSection({ currentUserId }: { currentUserId: string | null }) {
   const t = useTranslations("admin");
   const tCommon = useTranslations("common");
-  const queryClient = useQueryClient();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const { data: users } = useUsers();
-
-  const roleMutation = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: UserRole }) => {
-      const { error } = await supabase.rpc("set_user_role", {
-        target_id: id,
-        new_role: role,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS }),
-  });
-
-  const banMutation = useMutation({
-    mutationFn: async ({ id, banned }: { id: string; banned: boolean }) => {
-      const { error } = await supabase.rpc("set_user_banned", {
-        target_id: id,
-        is_banned: banned,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setPendingAction(null);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc("delete_user", { target_id: id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setPendingAction(null);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USERS });
-    },
-  });
+  const roleMutation = useUpdateUserRole();
+  const banMutation = useBanUser();
+  const deleteMutation = useDeleteUser();
 
   function initials(email: string) {
     const local = email.split("@")[0];
@@ -683,12 +639,14 @@ function UsersSection({ currentUserId }: { currentUserId: string | null }) {
   function handleConfirm() {
     if (!pendingAction) return;
     if (pendingAction.kind === "ban") {
-      banMutation.mutate({
-        id: pendingAction.userId,
-        banned: !pendingAction.currentlyBanned,
-      });
+      banMutation.mutate(
+        { id: pendingAction.userId, banned: !pendingAction.currentlyBanned },
+        { onSuccess: () => setPendingAction(null) },
+      );
     } else {
-      deleteMutation.mutate(pendingAction.userId);
+      deleteMutation.mutate(pendingAction.userId, {
+        onSuccess: () => setPendingAction(null),
+      });
     }
   }
 

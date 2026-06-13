@@ -1,15 +1,7 @@
 "use client";
 
-import { useOwnedPlaces } from "@/hooks/places/use-owned-places";
-
-const AMENITY_LABELS: Record<string, string> = {
-  pub: "Pub 🍺",
-  bar: "Bar 🥂",
-  restaurant: "Restaurant 🍽️",
-  cafe: "Cafe ☕",
-  nightclub: "Nightclub 🎶",
-  biergarten: "Biergarten 🌻",
-};
+import { useOwnedPlaces } from "@/features/places/api/get-owned-places";
+import { PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 export function OwnedPlaces() {
   const { data: places } = useOwnedPlaces();
@@ -33,7 +25,7 @@ export function OwnedPlaces() {
             {place.name}
           </span>
           <span className="text-xs text-muted-foreground shrink-0">
-            {AMENITY_LABELS[place.amenity] ?? place.amenity}
+            {PLACE_TYPE_LABELS[place.place_type] ?? place.place_type}
           </span>
           {place.city && (
             <span className="text-xs text-muted-foreground shrink-0">

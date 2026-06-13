@@ -7,7 +7,7 @@ import { QUERY_KEYS } from "@/lib/query-keys";
 export type MarkerInfo = {
   id: string;
   name: string;
-  amenity: string;
+  place_type: string;
   lat: number;
   lon: number;
   owner_id: string | null;
@@ -23,7 +23,7 @@ async function fetchPlaceData(markerId: string): Promise<PlaceData> {
   const [markerRes, placeRes, reviewsRes] = await Promise.all([
     supabase
       .from("markers")
-      .select("id, name, amenity, lat, lon, owner_id")
+      .select("id, name, place_type, lat, lon, owner_id")
       .eq("id", markerId)
       .single(),
     supabase.from("places").select("*, short_code").eq("marker_id", markerId).single(),

@@ -3,15 +3,17 @@
 import { useState, useEffect } from "react";
 import { useSetLocale } from "@/components/intl-provider";
 import { useTranslations, useLocale } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGeolocation } from "@/context/geolocation-context";
 import { type PlaceRequest } from "@/lib/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { useUserReviews } from "@/hooks/profile/use-user-reviews";
-import { useUserRequests } from "@/hooks/profile/use-user-requests";
-import { resubmitOwnerClaim } from "@/app/actions/resubmit-request";
+import { useUserReviews } from "@/features/profile/api/get-user-reviews";
+import { useUserRequests } from "@/features/profile/api/get-user-requests";
+import { useUpdatePreferences } from "@/features/profile/api/update-preferences";
+import { useResubmitOwnerClaim } from "@/features/profile/api/resubmit-owner-claim";
 import { ResubmitPlaceDialog } from "@/components/resubmit-place-dialog";
+import { PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 type Preferences = {
   pub_preference: boolean;
@@ -32,15 +34,6 @@ const STATUS_STYLES: Record<string, string> = {
   approved: "bg-green-500/20 text-green-500 border border-green-500/30",
   rejected: "bg-red-500/20 text-red-500 border border-red-500/30",
   need_more_info: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
-};
-
-const AMENITY_LABELS: Record<string, string> = {
-  pub: "Pub",
-  bar: "Bar",
-  restaurant: "Restaurant",
-  cafe: "Cafe",
-  nightclub: "Nightclub",
-  biergarten: "Biergarten",
 };
 
 function Toggle({
@@ -205,24 +198,8 @@ export function ProfileForm({
   const [claimDescriptions, setClaimDescriptions] = useState<Record<string, string>>({});
   const [claimErrors, setClaimErrors] = useState<Record<string, string | null>>({});
 
-  const saveMutation = useMutation({
-    mutationFn: async (prefs: Preferences) => {
-      await supabase.from("profiles").update({ preferences: prefs }).eq("id", userId);
-    },
-  });
-
-  const claimResubmitMutation = useMutation({
-    mutationFn: resubmitOwnerClaim,
-    onSuccess: (_data, variables) => {
-      setExpandedClaimId(null);
-      setClaimDescriptions((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
-      setClaimErrors((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_REQUESTS(userId) });
-    },
-    onError: (_err, variables) => {
-      setClaimErrors((prev) => ({ ...prev, [variables.requestId]: "Failed to submit. Please try again." }));
-    },
-  });
+  const saveMutation = useUpdatePreferences(userId);
+  const claimResubmitMutation = useResubmitOwnerClaim(userId);
 
   useEffect(() => {
     const channel = supabase
@@ -817,7 +794,7 @@ export function ProfileForm({
                       const label =
                         req.type === "owner_claim"
                           ? t("ownershipClaim")
-                          : (req.type === "place_request" ? (req.name ?? AMENITY_LABELS[req.amenity] ?? req.amenity) : "");
+                          : (req.type === "place_request" ? (req.name ?? PLACE_TYPE_LABELS[req.place_type] ?? req.place_type) : "");
                       const isNeedInfo = req.status === "need_more_info";
                       const isClaimExpanded = expandedClaimId === req.id;
                       return (
@@ -879,7 +856,16 @@ export function ProfileForm({
                                           setClaimErrors((prev) => ({ ...prev, [req.id]: t("descRequired") }));
                                           return;
                                         }
-                                        claimResubmitMutation.mutate({ requestId: req.id, description: desc });
+                                        claimResubmitMutation.mutate({ requestId: req.id, description: desc }, {
+                                          onSuccess: (_data, variables) => {
+                                            setExpandedClaimId(null);
+                                            setClaimDescriptions((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
+                                            setClaimErrors((prev) => { const n = { ...prev }; delete n[variables.requestId]; return n; });
+                                          },
+                                          onError: (_err, variables) => {
+                                            setClaimErrors((prev) => ({ ...prev, [variables.requestId]: "Failed to submit. Please try again." }));
+                                          },
+                                        });
                                       }}
                                       disabled={claimResubmitMutation.isPending && claimResubmitMutation.variables?.requestId === req.id}
                                       className="text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-lg px-3 py-1.5 transition-colors"

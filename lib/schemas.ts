@@ -98,7 +98,7 @@ export const OpeningHoursSchema = z.object({
 export const MapMarkerSchema = z.object({
   id: z.string(),
   name: z.string(),
-  amenity: z.string(),
+  place_type: z.string(),
   lat: z.number(),
   lon: z.number(),
   outdoor_seating: z.boolean().nullable(),
@@ -111,7 +111,7 @@ export const MapMarkerSchema = z.object({
 export const PubListItemSchema = z.object({
   id: z.string(),
   name: z.string(),
-  amenity: z.string(),
+  place_type: z.string(),
   lat: z.number(),
   lon: z.number(),
   city: z.string().nullable(),
@@ -180,18 +180,18 @@ export const ProfileSchema = z.object({
 })
 
 // Add place form
-const AMENITIES = ['pub', 'bar', 'restaurant', 'cafe', 'nightclub', 'biergarten'] as const
+const PLACE_TYPES = ['pub', 'bar', 'biergarten'] as const
 
 export const AddPlaceSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200, 'Max 200 characters'),
-  amenity: z.enum(AMENITIES, { errorMap: () => ({ message: 'Category is required' }) }),
+  place_type: z.enum(PLACE_TYPES, { errorMap: () => ({ message: 'Category is required' }) }),
   address: z.string().trim().optional(),
   lat: z.number({ required_error: 'Pick a location on the map', invalid_type_error: 'Pick a location on the map' }),
   lon: z.number({ required_error: 'Pick a location on the map', invalid_type_error: 'Pick a location on the map' }),
 })
 
 export type AddPlaceValues = z.infer<typeof AddPlaceSchema>
-export type Amenity = typeof AMENITIES[number]
+export type Amenity = typeof PLACE_TYPES[number]
 
 // Review submission form
 export const ReviewFormSchema = z.object({
@@ -242,7 +242,7 @@ export const ReviewActionSchema = z.discriminatedUnion('action', [
 export const PlaceRequestSchema = LocationRequestBase.extend({
   type: z.literal('place_request'),
   name: z.string(),
-  amenity: z.string(),
+  place_type: z.string(),
   address: z.string().nullable(),
   lat: z.number(),
   lon: z.number(),
@@ -254,7 +254,7 @@ export const OwnerClaimSchema = LocationRequestBase.extend({
   type: z.literal('owner_claim'),
   marker_id: z.string(),
   name: z.string().nullable(),
-  amenity: z.string().nullable(),
+  place_type: z.string().nullable(),
   address: z.string().nullable(),
   lat: z.number().nullable(),
   lon: z.number().nullable(),
@@ -273,7 +273,7 @@ export const ClaimPlaceSchema = z.object({
 
 export const EditPlaceSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200, 'Max 200 characters'),
-  amenity: z.enum(['pub', 'bar', 'restaurant', 'cafe', 'nightclub', 'biergarten'] as const, {
+  place_type: z.enum(['pub', 'bar', 'biergarten'] as const, {
     errorMap: () => ({ message: 'Category is required' }),
   }),
   address: z.string().trim().nullable(),

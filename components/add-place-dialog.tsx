@@ -5,14 +5,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { requestPlace } from "@/app/actions/request-place";
-import { QUERY_KEYS } from "@/lib/query-keys";
 import {
   AddPlaceSchema,
   type AddPlaceValues,
   type OpeningHours,
 } from "@/lib/schemas";
+import { useCreatePlaceRequest } from "@/features/places/api/create-place-request";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -22,6 +20,7 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
+import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/lib/place-type";
 
 const LocationPickerMap = dynamic(
   () =>
@@ -30,12 +29,6 @@ const LocationPickerMap = dynamic(
     })),
   { ssr: false },
 );
-
-const AMENITIES = [
-  { value: "pub", label: "Pub", icon: "🍺" },
-  { value: "bar", label: "Bar", icon: "🥂" },
-  { value: "biergarten", label: "Beer Garden", icon: "🌻" },
-] as const;
 
 const DAYS = ["mo", "tu", "we", "th", "fr", "sa", "su"] as const;
 type Day = (typeof DAYS)[number];
@@ -179,7 +172,6 @@ const LABEL = `font-mono text-[9px] font-bold uppercase tracking-[0.2em]`;
 const DASH_BORDER = `1px dashed ${ACCENT}80`;
 
 export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
-  const queryClient = useQueryClient();
   const [dayStates, setDayStates] =
     useState<Record<Day, DayState>>(DEFAULT_DAYS);
 
@@ -191,21 +183,17 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
   const lat = form.watch("lat") as number | undefined;
   const lon = form.watch("lon") as number | undefined;
 
-  const mutation = useMutation({
-    mutationFn: (
-      values: AddPlaceValues & { opening_hours: OpeningHours | null },
-    ) => requestPlace(values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.REQUESTS });
-      handleClose(false);
-      toast.success("Request submitted", {
-        description: "An admin will review your suggestion shortly.",
-      });
-    },
-  });
+  const mutation = useCreatePlaceRequest();
 
   function onSubmit(values: AddPlaceValues) {
-    mutation.mutate({ ...values, opening_hours: buildOpeningHours(dayStates) });
+    mutation.mutate({ ...values, opening_hours: buildOpeningHours(dayStates) }, {
+      onSuccess: () => {
+        handleClose(false);
+        toast.success("Request submitted", {
+          description: "An admin will review your suggestion shortly.",
+        });
+      },
+    });
   }
 
   function setDay(day: Day, patch: Partial<DayState>) {
@@ -286,12 +274,12 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
                   </p>
                   <FormField
                     control={form.control}
-                    name="amenity"
+                    name="place_type"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
                           <div className="flex gap-2 mt-2">
-                            {AMENITIES.map((a) => (
+                            {PLACE_TYPE_FORM_LIST.map((a) => (
                               <button
                                 key={a.value}
                                 type="button"
@@ -311,7 +299,7 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
                                       }
                                 }
                               >
-                                <span className="text-base">{a.icon}</span>
+                                <PlaceTypeIcon placeType={a.value} size={18} />
                                 <span>{a.label}</span>
                               </button>
                             ))}

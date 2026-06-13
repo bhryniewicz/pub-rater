@@ -139,7 +139,7 @@ async function seed() {
         name: tags.name,
         lat,
         lon,
-        amenity: tags.amenity,
+        place_type: tags.amenity,
         outdoor_seating:
           tags.outdoor_seating === "yes"
             ? true

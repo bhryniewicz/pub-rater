@@ -9,6 +9,7 @@ import { useSearch } from "@/context/search-context";
 import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/hooks/use-user";
+import { PlaceTypeIcon, PLACE_TYPE_COLORS } from "@/lib/place-type";
 import {
   Command,
   CommandList,
@@ -23,24 +24,6 @@ import {
   LuChevronUp,
 } from "react-icons/lu";
 import { Drawer } from "@/components/ui/drawer";
-
-const AMENITY_ICONS: Record<string, string> = {
-  pub: "🍺",
-  bar: "🥂",
-  restaurant: "🍽️",
-  cafe: "☕",
-  nightclub: "🎶",
-  biergarten: "🌻",
-};
-
-const AMENITY_COLORS: Record<string, string> = {
-  pub: "#d97706",
-  bar: "#7c3aed",
-  restaurant: "#dc2626",
-  cafe: "#92400e",
-  nightclub: "#db2777",
-  biergarten: "#16a34a",
-};
 
 export function SearchBar() {
   const t = useTranslations("searchBar");
@@ -140,7 +123,7 @@ export function SearchBar() {
       : [];
 
   const categoryCounts = markers.reduce<Record<string, number>>((acc, m) => {
-    acc[m.amenity] = (acc[m.amenity] ?? 0) + 1;
+    acc[m.place_type] = (acc[m.place_type] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -282,15 +265,15 @@ export function SearchBar() {
                       onSelect={() => handleSelect(marker)}
                       className="flex items-center gap-2.5 px-3 py-2 cursor-pointer"
                     >
-                      <span className="text-base shrink-0">
-                        {AMENITY_ICONS[marker.amenity] ?? "📍"}
+                      <span className="shrink-0">
+                        <PlaceTypeIcon placeType={marker.place_type} size={16} />
                       </span>
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm text-foreground truncate">
                           {marker.name}
                         </span>
                         <span className="text-[10px] text-muted-foreground capitalize">
-                          {marker.amenity}
+                          {marker.place_type}
                         </span>
                       </div>
                     </CommandItem>
@@ -387,12 +370,12 @@ export function SearchBar() {
                             }`}
                             style={
                               active
-                                ? { borderColor: AMENITY_COLORS[type] + "60" }
+                                ? { borderColor: PLACE_TYPE_COLORS[type] + "60" }
                                 : undefined
                             }
                           >
-                            <span className="text-base shrink-0">
-                              {AMENITY_ICONS[type] ?? "📍"}
+                            <span className="shrink-0">
+                              <PlaceTypeIcon placeType={type} size={16} />
                             </span>
                             <span className="flex-1 text-left capitalize text-foreground">
                               {type}

@@ -15,7 +15,7 @@ export async function fetchAllMarkers(client: SupabaseClient = supabase): Promis
   while (true) {
     const { data, error } = await client
       .from("markers")
-      .select("id, name, amenity, lat, lon, outdoor_seating, voivodeship")
+      .select("id, name, place_type, lat, lon, outdoor_seating, voivodeship")
       .order("id")
       .range(from, from + pageSize - 1);
     if (error || !data) break;

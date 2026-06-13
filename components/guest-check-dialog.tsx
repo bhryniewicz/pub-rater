@@ -74,7 +74,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   markerName: string;
-  markerAmenity: string;
+  markerPlaceType: string;
   placeCity?: string | null;
   placeShortCode?: string | null;
   onSubmit: (values: GuestCheckValues) => void;
@@ -125,7 +125,7 @@ export function GuestCheckDialog({
   open,
   onOpenChange,
   markerName,
-  markerAmenity,
+  markerPlaceType,
   placeCity,
   placeShortCode,
   onSubmit,
@@ -244,7 +244,7 @@ export function GuestCheckDialog({
                 className="font-mono text-[10px] text-[#7a6248] uppercase"
                 style={{ letterSpacing: "0.12em" }}
               >
-                {markerAmenity}
+                {markerPlaceType}
                 {placeCity ? ` · ${placeCity}` : ""}
                 {placeShortCode ? ` · #${placeShortCode}` : ""}
               </p>

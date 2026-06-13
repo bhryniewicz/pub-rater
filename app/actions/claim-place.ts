@@ -18,7 +18,7 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
   const [{ data: marker, error: markerError }, { data: place }] = await Promise.all([
     supabase
       .from('markers')
-      .select('id, name, amenity, lat, lon, owner_id')
+      .select('id, name, place_type, lat, lon, owner_id')
       .eq('id', parsed.data.marker_id)
       .single(),
     supabase
@@ -51,7 +51,7 @@ export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {
     requester_email: user.email ?? null,
     requester_name: (user.user_metadata?.display_name as string | undefined) ?? null,
     name: marker.name,
-    amenity: marker.amenity,
+    place_type: marker.place_type,
     lat: marker.lat,
     lon: marker.lon,
     address: place?.address ?? null,

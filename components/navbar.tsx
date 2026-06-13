@@ -60,6 +60,12 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
     }`;
   }
 
+  const handleLogOut = async () => {
+    await supabase.auth.signOut();
+    setMenuOpen(false);
+    router.push("/");
+  };
+
   const menuContent = (
     <div className="px-4 py-5 flex flex-col gap-1">
       {/* Theme toggle */}
@@ -139,11 +145,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
           </Link>
           <hr className="border-border my-1" />
           <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              setMenuOpen(false);
-              router.push("/");
-            }}
+            onClick={handleLogOut}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors"
           >
             <LuLogOut size={16} />
@@ -195,11 +197,15 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
           <div className="h-12 flex items-center shrink-0">
             <Link href="/" aria-label="Pub Rater">
               <Image
-                src="/pub-rater-logo.png"
+                src={
+                  mounted && resolvedTheme === "dark"
+                    ? "/pub-rater-dark.png"
+                    : "/pub-rater-light.png"
+                }
                 alt="Pub Rater"
                 height={80}
                 width={160}
-                className="h-18 w-auto object-contain"
+                className="h-min w-auto object-contain"
                 priority
               />
             </Link>

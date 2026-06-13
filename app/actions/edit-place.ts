@@ -27,7 +27,7 @@ export async function editPlace(markerId: string, payload: EditPlaceValues): Pro
 
   const { error: markerError } = await supabase
     .from('markers')
-    .update({ name: parsed.data.name, amenity: parsed.data.amenity })
+    .update({ name: parsed.data.name, place_type: parsed.data.place_type })
     .eq('id', markerId)
 
   if (markerError) throw markerError

@@ -3,36 +3,18 @@
 import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useTheme } from "next-themes";
-
-const AMENITY_ICONS: Record<string, string> = {
-  pub: "🍺",
-  bar: "🥂",
-  restaurant: "🍽️",
-  cafe: "☕",
-  nightclub: "🎵",
-  biergarten: "🌳",
-};
-
-const AMENITY_COLORS: Record<string, string> = {
-  pub: "#d97706",
-  bar: "#7c3aed",
-  restaurant: "#dc2626",
-  cafe: "#92400e",
-  nightclub: "#db2777",
-  biergarten: "#16a34a",
-};
+import { PlaceTypeIcon, PLACE_TYPE_COLORS } from "@/lib/place-type";
 
 interface Props {
   lat: number;
   lon: number;
-  amenity: string;
+  placeType: string;
   userLocation?: { lat: number; lon: number } | null;
 }
 
-export default function PlaceMap({ lat, lon, amenity, userLocation }: Props) {
+export default function PlaceMap({ lat, lon, placeType, userLocation }: Props) {
   const { resolvedTheme } = useTheme();
-  const bg = AMENITY_COLORS[amenity] ?? "#4b5563";
-  const icon = AMENITY_ICONS[amenity] ?? "📍";
+  const bg = PLACE_TYPE_COLORS[placeType] ?? "#4b5563";
   const mapStyle = resolvedTheme === "light"
     ? `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_LIGHT}`
     : `mapbox://styles/${process.env.NEXT_PUBLIC_MAPBOX_STYLE_ID_DARK}`;
@@ -53,9 +35,9 @@ export default function PlaceMap({ lat, lon, amenity, userLocation }: Props) {
             background: bg,
             boxShadow: `0 0 0 6px ${bg}77`,
           }}
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-[16px] scale-[1.2]"
+          className="w-9 h-9 rounded-xl flex items-center justify-center scale-[1.2]"
         >
-          {icon}
+          <PlaceTypeIcon placeType={placeType} size={16} color="white" />
         </div>
       </Marker>
 

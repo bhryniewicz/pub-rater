@@ -24,7 +24,7 @@ export async function addPlace(payload: AddPlacePayload): Promise<{ id: string }
       name: parsed.data.name,
       lat: parsed.data.lat,
       lon: parsed.data.lon,
-      amenity: parsed.data.amenity,
+      place_type: parsed.data.place_type,
     })
     .select('id')
     .single()

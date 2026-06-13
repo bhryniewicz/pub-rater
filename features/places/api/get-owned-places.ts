@@ -7,7 +7,7 @@ import { QUERY_KEYS } from "@/lib/query-keys";
 export type OwnedPlace = {
   id: string;
   name: string;
-  amenity: string;
+  place_type: string;
   city: string | null;
   address: string | null;
 };
@@ -20,7 +20,7 @@ async function fetchOwnedPlaces(): Promise<OwnedPlace[]> {
 
   const { data, error } = await supabase
     .from("markers")
-    .select("id, name, amenity, places(city, address)")
+    .select("id, name, place_type, places(city, address)")
     .eq("owner_id", session.user.id)
     .order("name");
 
@@ -31,7 +31,7 @@ async function fetchOwnedPlaces(): Promise<OwnedPlace[]> {
     return {
       id: row.id,
       name: row.name,
-      amenity: row.amenity,
+      place_type: row.place_type,
       city: place?.city ?? null,
       address: place?.address ?? null,
     };

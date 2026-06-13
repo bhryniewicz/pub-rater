@@ -406,7 +406,8 @@
     "closedStatus": "Zamknięte",
     "noHours": "Brak godzin",
     "noReview": "Brak oceny",
-    "loadingMore": "Ładowanie...",
+    "loading": "Ładowanie...",
+    "loadingMore": "Ładowanie więcej...",
     "allLoaded": "Wszystkie miejsca załadowane",
     "until": "do {time}"
   },

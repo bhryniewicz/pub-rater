@@ -50,7 +50,7 @@ export async function approveRequest(id: string): Promise<void> {
       name: req.name,
       lat: req.lat,
       lon: req.lon,
-      amenity: req.amenity,
+      place_type: req.place_type,
     })
     .select('id')
     .single()

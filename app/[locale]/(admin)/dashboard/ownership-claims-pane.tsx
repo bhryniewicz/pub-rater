@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { approveRequest, rejectRequest, requestMoreInfo } from "@/app/actions/review-request";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { ReviewActionSchema, type OwnerClaim } from "@/lib/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { useOwnerClaims } from "@/hooks/admin/use-owner-claims";
+import { useOwnerClaims } from "@/features/admin/api/get-owner-claims";
+import { useApproveOwnerClaim, useRejectOwnerClaim, useRequestMoreInfoOwnerClaim } from "@/features/admin/api/review-owner-claim";
 import { LuCheck, LuX, LuArrowLeft, LuInfo } from "react-icons/lu";
 import dynamic from "next/dynamic";
 
@@ -68,27 +68,9 @@ export function OwnershipClaimsPane() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const approveMutation = useMutation({
-    mutationFn: approveRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS }),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: rejectRequest,
-    onSuccess: () => {
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS });
-    },
-  });
-
-  const needMoreInfoMutation = useMutation({
-    mutationFn: requestMoreInfo,
-    onSuccess: () => {
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OWNER_CLAIMS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_COUNTS });
-    },
-  });
+  const approveMutation = useApproveOwnerClaim();
+  const rejectMutation = useRejectOwnerClaim();
+  const needMoreInfoMutation = useRequestMoreInfoOwnerClaim();
 
   function openModal(type: "reject" | "need_more_info") {
     setModal(type);
@@ -110,8 +92,8 @@ export function OwnershipClaimsPane() {
       return;
     }
     setModalError(null);
-    if (modal === "reject") rejectMutation.mutate({ id: selected.id, comment: modalMessage });
-    else needMoreInfoMutation.mutate({ id: selected.id, comment: modalMessage });
+    if (modal === "reject") rejectMutation.mutate({ id: selected.id, comment: modalMessage }, { onSuccess: closeModal });
+    else needMoreInfoMutation.mutate({ id: selected.id, comment: modalMessage }, { onSuccess: closeModal });
   }
 
   const selected = claims.find((c) => c.id === selectedId) ?? claims[0] ?? null;
@@ -185,7 +167,7 @@ export function OwnershipClaimsPane() {
         </h2>
         <div className="flex flex-wrap items-center gap-2 mb-6">
           <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-card border border-border text-foreground">
-            {selected.amenity ?? "Place"}
+            {selected.place_type ?? "Place"}
           </span>
           <StatusBadge status={selected.status} />
         </div>

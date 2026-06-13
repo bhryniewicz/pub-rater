@@ -11,12 +11,14 @@ import Map, {
 } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase, type MapMarker, type Place } from "@/lib/supabase";
+import { BeerRating } from "@/components/beer-rating";
 import {
-  PubLine,
-  BarSolid,
-  BiergartenSolid,
-  MixedSolid,
-} from "@/components/icons";
+  PlaceTypeIcon,
+  placeTypeColor,
+  dominantPlaceType,
+  topPlaceTypeColors,
+  mixedGradient,
+} from "@/lib/place-type";
 
 // Above this zoom: individual markers
 const CLUSTER_THRESHOLD = 14;
@@ -36,7 +38,7 @@ type ClusterItem =
       count: number;
       lat: number;
       lon: number;
-      dominantAmenity: string;
+      dominantPlaceType: string;
       topColors: string[];
     };
 
@@ -131,97 +133,31 @@ function clusterPubs(pubs: MapMarker[], zoom: number): ClusterItem[] {
         if (half.pubs.length === 1) {
           items.push({ type: "pub", pub: half.pubs[0] });
         } else {
-          const da = dominantAmenity(half.pubs);
+          const da = dominantPlaceType(half.pubs);
           items.push({
             type: "cluster",
             count: half.pubs.length,
             lat: half.lat,
             lon: half.lon,
-            dominantAmenity: da,
-            topColors: da === "mixed" ? topAmenityColors(half.pubs) : [amenityColor(da)],
+            dominantPlaceType: da,
+            topColors: da === "mixed" ? topPlaceTypeColors(half.pubs) : [placeTypeColor(da)],
           });
         }
       }
     } else {
-      const da = dominantAmenity(cell.pubs);
+      const da = dominantPlaceType(cell.pubs);
       items.push({
         type: "cluster",
         count: cell.pubs.length,
         lat: cell.lat,
         lon: cell.lon,
-        dominantAmenity: da,
-        topColors: da === "mixed" ? topAmenityColors(cell.pubs) : [amenityColor(da)],
+        dominantPlaceType: da,
+        topColors: da === "mixed" ? topPlaceTypeColors(cell.pubs) : [placeTypeColor(da)],
       });
     }
   }
   return items;
 }
-
-function AmenityIcon({
-  amenity,
-  size = 20,
-  color = "#2B1A08",
-}: {
-  amenity: string;
-  size?: number;
-  color?: string;
-}) {
-  switch (amenity) {
-    case "pub":
-    case "restaurant":
-    case "cafe":
-    case "nightclub":
-      return <PubLine size={size} color={color} />;
-    case "bar":
-      return <BarSolid size={size} color={color} />;
-    case "biergarten":
-      return <BiergartenSolid size={size} color={color} />;
-    default:
-      return <MixedSolid size={size} color={color} />;
-  }
-}
-
-const AMENITY_COLORS: Record<string, string> = {
-  pub: "#d97706",
-  bar: "#7c3aed",
-  restaurant: "#dc2626",
-  cafe: "#92400e",
-  nightclub: "#db2777",
-  biergarten: "#16a34a",
-  mixed: "#facc15",
-};
-
-function amenityColor(amenity: string): string {
-  return AMENITY_COLORS[amenity] ?? "#4b5563";
-}
-
-function dominantAmenity(pubs: MapMarker[]): string {
-  const counts: Record<string, number> = {};
-  for (const p of pubs) {
-    counts[p.amenity] = (counts[p.amenity] ?? 0) + 1;
-  }
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const top = sorted[0];
-  if (!top) return "pub";
-  if (top[1] / pubs.length < 0.6) return "mixed";
-  return top[0];
-}
-
-function topAmenityColors(pubs: MapMarker[], n = 3): string[] {
-  const counts: Record<string, number> = {};
-  for (const p of pubs) {
-    counts[p.amenity] = (counts[p.amenity] ?? 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([amenity]) => amenityColor(amenity));
-}
-
-function mixedGradient(colors: string[]): string {
-  return `linear-gradient(to right, ${colors.join(", ")})`;
-}
-
 
 // Persists viewport across remounts (e.g. locale switch). Module-level singleton
 // survives React unmount/remount; resets only on full page reload.
@@ -336,8 +272,8 @@ export default function MapComponent({
       {items.map((item, i) => {
         if (item.type === "cluster") {
           const label = item.count > 99 ? "99+" : `${item.count}`;
-          const isMixed = item.dominantAmenity === "mixed" && item.topColors.length > 1;
-          const bg = isMixed ? mixedGradient(item.topColors) : amenityColor(item.dominantAmenity);
+          const isMixed = item.dominantPlaceType === "mixed" && item.topColors.length > 1;
+          const bg = isMixed ? mixedGradient(item.topColors) : placeTypeColor(item.dominantPlaceType);
           const shadowColor = item.topColors[0];
           return (
             <Marker
@@ -354,7 +290,7 @@ export default function MapComponent({
                   }}
                   className="w-[34px] h-[34px] rounded-xl flex items-center justify-center cursor-pointer"
                 >
-                  <AmenityIcon amenity={item.dominantAmenity} size={18} color="white" />
+                  <PlaceTypeIcon placeType={item.dominantPlaceType} size={18} color="white" />
                 </div>
                 <div
                   className={`absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1`}
@@ -368,7 +304,7 @@ export default function MapComponent({
 
         const pub = item.pub;
         const isSelected = selectedMarker?.id === pub.id;
-        const bg = amenityColor(pub.amenity);
+        const bg = placeTypeColor(pub.place_type);
         return (
           <Marker
             key={pub.id}
@@ -389,7 +325,7 @@ export default function MapComponent({
               }}
               className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-[transform,box-shadow] duration-150 ease-in-out hover:scale-110 ${isSelected ? "scale-[1.2]" : "scale-100"}`}
             >
-              <AmenityIcon amenity={pub.amenity} size={16} color="white" />
+              <PlaceTypeIcon placeType={pub.place_type} size={16} color="white" />
             </div>
           </Marker>
         );
@@ -432,46 +368,7 @@ export default function MapComponent({
                 ? { value: selectedPlace.google_rating, count: selectedPlace.google_review_count }
                 : null;
               return rating ? (
-                <div className="flex items-center gap-1.5">
-                  <div className="flex gap-[3px]">
-                    {Array.from({ length: 5 }).map((_, i) => {
-                      const full = rating.value >= i + 1;
-                      const half = !full && rating.value >= i + 0.5;
-                      if (half) {
-                        return (
-                          <span
-                            key={i}
-                            className="relative inline-flex items-center justify-center w-[14px] h-[14px]"
-                          >
-                            <PubLine size={14} color="#6b7280" />
-                            <span
-                              className="absolute top-0 left-0 bottom-0 overflow-hidden"
-                              style={{ width: "50%" }}
-                            >
-                              <PubLine size={14} color="#facc15" />
-                            </span>
-                          </span>
-                        );
-                      }
-                      return (
-                        <span
-                          key={i}
-                          className="inline-flex items-center justify-center w-[14px] h-[14px]"
-                        >
-                          {full ? (
-                            <PubLine size={14} color="#facc15" />
-                          ) : (
-                            <PubLine size={14} color="#6b7280" />
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <span className="text-xs font-bold text-white">{rating.value.toFixed(1)}</span>
-                  {rating.count != null && (
-                    <span className="text-xs text-zinc-400">({rating.count} reviews)</span>
-                  )}
-                </div>
+                <BeerRating rating={rating.value} count={rating.count} />
               ) : null;
             })()}
           </Link>

@@ -5,10 +5,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { resubmitPlaceRequest } from "@/app/actions/resubmit-request";
-import { QUERY_KEYS } from "@/lib/query-keys";
 import { AddPlaceSchema, type AddPlaceValues, type OpeningHours, type PlaceRequest } from "@/lib/schemas";
+import { useResubmitPlaceRequest } from "@/features/places/api/resubmit-place-request";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -86,7 +84,6 @@ export function ResubmitPlaceDialog({ open, onOpenChange, request }: Props) {
     { value: "bar" as const, label: t("bar"), icon: "🥂" },
     { value: "biergarten" as const, label: t("beerGarden"), icon: "🌻" },
   ];
-  const queryClient = useQueryClient();
   const [dayStates, setDayStates] = useState<Record<Day, DayState>>(
     () => hoursToState(request.opening_hours),
   );
@@ -95,7 +92,7 @@ export function ResubmitPlaceDialog({ open, onOpenChange, request }: Props) {
     resolver: zodResolver(AddPlaceSchema),
     defaultValues: {
       name: request.name,
-      amenity: request.amenity as AddPlaceValues["amenity"],
+      place_type: request.place_type as AddPlaceValues["place_type"],
       address: request.address ?? "",
       lat: request.lat,
       lon: request.lon,
@@ -105,17 +102,13 @@ export function ResubmitPlaceDialog({ open, onOpenChange, request }: Props) {
   const lat = form.watch("lat") as number | undefined;
   const lon = form.watch("lon") as number | undefined;
 
-  const mutation = useMutation({
-    mutationFn: (values: AddPlaceValues & { opening_hours: OpeningHours | null }) =>
-      resubmitPlaceRequest({ ...values, requestId: request.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user_requests"] });
-      onOpenChange(false);
-    },
-  });
+  const mutation = useResubmitPlaceRequest();
 
   function onSubmit(values: AddPlaceValues) {
-    mutation.mutate({ ...values, opening_hours: buildOpeningHours(dayStates) });
+    mutation.mutate(
+      { ...values, opening_hours: buildOpeningHours(dayStates), requestId: request.id },
+      { onSuccess: () => onOpenChange(false) },
+    );
   }
 
   function setDay(day: Day, patch: Partial<DayState>) {
@@ -181,7 +174,7 @@ export function ResubmitPlaceDialog({ open, onOpenChange, request }: Props) {
 
                 <FormField
                   control={form.control}
-                  name="amenity"
+                  name="place_type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("categoryLabel")}</FormLabel>

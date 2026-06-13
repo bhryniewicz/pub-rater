@@ -1,61 +1,55 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { QUERY_KEYS } from '@/lib/query-keys'
+import type { ProfilePreferences } from '@/lib/schemas'
+
+export type UserProfile = {
+  is_onboarded: boolean
+  preferences: ProfilePreferences | null
+  liked_places: string[]
+  role: string
+  avatar_url: string | null
+  banned: boolean
+}
+
+export type UserData = {
+  user: User | null
+  isAdmin: boolean
+  isOwner: boolean
+  profile: UserProfile | null
+}
+
+export async function fetchUser(): Promise<UserData> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const u = session?.user ?? null
+  if (!u) return { user: null, isAdmin: false, isOwner: false, profile: null }
+  const { data } = await supabase
+    .from('profiles')
+    .select('role, is_onboarded, preferences, liked_places, avatar_url, banned')
+    .eq('id', u.id)
+    .single()
+  return {
+    user: u,
+    isAdmin: data?.role === 'admin',
+    isOwner: data?.role === 'owner',
+    profile: data ?? null,
+  }
+}
 
 export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean; isOwner: boolean } {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isOwner, setIsOwner] = useState(false)
+  const { data, isLoading } = useQuery({
+    queryKey: QUERY_KEYS.USER,
+    queryFn: fetchUser,
+    staleTime: Infinity,
+  })
 
-  async function fetchRole(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-    setIsAdmin(data?.role === 'admin')
-    setIsOwner(data?.role === 'owner')
+  return {
+    user: data?.user ?? null,
+    loading: isLoading,
+    isAdmin: data?.isAdmin ?? false,
+    isOwner: data?.isOwner ?? false,
   }
-
-  useEffect(() => {
-    // Read the session from cookie storage (not in-memory cache) so we pick up
-    // any tokens the server refreshed via the proxy since the last page load.
-    function syncFromStorage() {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        const u = session?.user ?? null
-        setUser(u)
-        setLoading(false)
-        if (u) fetchRole(u.id)
-        else { setIsAdmin(false); setIsOwner(false) }
-      })
-    }
-
-    syncFromStorage()
-
-    // When the browser restores this page from the back/forward cache (bfcache),
-    // React effects don't re-run — but the pageshow event still fires, so we
-    // re-sync in case the server rotated the refresh token while we were away.
-    window.addEventListener('pageshow', syncFromStorage)
-
-    // Keep in sync with auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        const u = session?.user ?? null
-        setUser(u)
-        setLoading(false)
-        if (u) fetchRole(u.id)
-        else { setIsAdmin(false); setIsOwner(false) }
-      }
-    )
-
-    return () => {
-      subscription.unsubscribe()
-      window.removeEventListener('pageshow', syncFromStorage)
-    }
-  }, [])
-
-  return { user, loading, isAdmin, isOwner }
 }

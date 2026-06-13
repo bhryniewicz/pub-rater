@@ -2,28 +2,20 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { approveRequest, rejectRequest, requestMoreInfo } from "@/app/actions/review-request";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { ReviewActionSchema, type PlaceRequest } from "@/lib/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { usePlaceRequests } from "@/hooks/admin/use-place-requests";
+import { usePlaceRequests } from "@/features/admin/api/get-place-requests";
+import { useApprovePlaceRequest, useRejectPlaceRequest, useRequestMoreInfoPlaceRequest } from "@/features/admin/api/review-place-request";
 import dynamic from "next/dynamic";
 import { LuCheck, LuX, LuArrowLeft, LuArrowUpDown, LuInfo } from "react-icons/lu";
+import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 const RequestMiniMap = dynamic(
   () => import("./request-mini-map").then((m) => m.RequestMiniMap),
   { ssr: false },
 );
-
-const AMENITY_LABELS: Record<string, { label: string; icon: string }> = {
-  pub: { label: "Pub", icon: "🍺" },
-  bar: { label: "Bar", icon: "🥂" },
-  restaurant: { label: "Restaurant", icon: "🍽️" },
-  cafe: { label: "Cafe", icon: "☕" },
-  nightclub: { label: "Nightclub", icon: "🎶" },
-  biergarten: { label: "Biergarten", icon: "🌻" },
-};
 
 const DAY_LABELS: Record<string, string> = {
   mo: "Mon", tu: "Tue", we: "Wed", th: "Thu", fr: "Fri", sa: "Sat", su: "Sun",
@@ -45,15 +37,16 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/20"><span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />rejected</span>;
 }
 
-function AmenityChip({ amenity }: { amenity: string }) {
-  const info = AMENITY_LABELS[amenity] ?? { label: amenity, icon: "📍" };
-  return <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-card border border-border text-foreground">{info.icon} {info.label}</span>;
+function PlaceTypeChip({ placeType }: { placeType: string }) {
+  const label = PLACE_TYPE_LABELS[placeType] ?? placeType;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-card border border-border text-foreground">
+      <PlaceTypeIcon placeType={placeType} size={12} />
+      {label}
+    </span>
+  );
 }
 
-function AmenityIcon({ amenity }: { amenity: string }) {
-  const info = AMENITY_LABELS[amenity] ?? { label: amenity, icon: "📍" };
-  return <div className="w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center text-base shrink-0">{info.icon}</div>;
-}
 
 export function PlaceRequestsPane() {
   const t = useTranslations("admin");
@@ -82,31 +75,9 @@ export function PlaceRequestsPane() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const approveMutation = useMutation({
-    mutationFn: approveRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: rejectRequest,
-    onSuccess: () => {
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
-    },
-  });
-
-  const needMoreInfoMutation = useMutation({
-    mutationFn: requestMoreInfo,
-    onSuccess: () => {
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE_REQUESTS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_COUNTS });
-    },
-  });
+  const approveMutation = useApprovePlaceRequest();
+  const rejectMutation = useRejectPlaceRequest();
+  const needMoreInfoMutation = useRequestMoreInfoPlaceRequest();
 
   function openModal(type: "reject" | "need_more_info") {
     setModal(type);
@@ -128,8 +99,8 @@ export function PlaceRequestsPane() {
       return;
     }
     setModalError(null);
-    if (modal === "reject") rejectMutation.mutate({ id: selected.id, comment: modalMessage });
-    else needMoreInfoMutation.mutate({ id: selected.id, comment: modalMessage });
+    if (modal === "reject") rejectMutation.mutate({ id: selected.id, comment: modalMessage }, { onSuccess: closeModal });
+    else needMoreInfoMutation.mutate({ id: selected.id, comment: modalMessage }, { onSuccess: closeModal });
   }
 
   const sorted = sortNewest
@@ -139,7 +110,7 @@ export function PlaceRequestsPane() {
   const filtered =
     filter === "all" ? sorted
     : filter === "needs_info" ? sorted.filter((r) => r.status === "need_more_info")
-    : sorted.filter((r) => r.amenity === filter);
+    : sorted.filter((r) => r.place_type === filter);
 
   const selected = filtered.find((r) => r.id === selectedId) ?? filtered[0] ?? null;
   const selectedIdx = selected ? requests.findIndex((r) => r.id === selected.id) : 0;
@@ -150,8 +121,8 @@ export function PlaceRequestsPane() {
 
   const filterTabs: { key: FilterTab; label: string; count: number }[] = [
     { key: "all", label: t("filterAll"), count: requests.length },
-    { key: "pub", label: t("filterPubs"), count: requests.filter((r) => r.amenity === "pub").length },
-    { key: "biergarten", label: t("filterBiergartens"), count: requests.filter((r) => r.amenity === "biergarten").length },
+    { key: "pub", label: t("filterPubs"), count: requests.filter((r) => r.place_type === "pub").length },
+    { key: "biergarten", label: t("filterBiergartens"), count: requests.filter((r) => r.place_type === "biergarten").length },
     { key: "needs_info", label: t("filterNeedsInfo"), count: requests.filter((r) => r.status === "need_more_info").length },
   ];
 
@@ -172,7 +143,6 @@ export function PlaceRequestsPane() {
             {filtered.map((req) => {
               const isSelected = selected?.id === req.id;
               const idx = requests.findIndex((r) => r.id === req.id);
-              const icon = AMENITY_LABELS[req.amenity]?.icon ?? "📍";
               return (
                 <button
                   key={req.id}
@@ -181,8 +151,8 @@ export function PlaceRequestsPane() {
                     isSelected ? "border-primary bg-card ring-1 ring-primary/30" : "border-border hover:bg-card/60"
                   }`}
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-3xl shrink-0">
-                    {icon}
+                  <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shrink-0">
+                    <PlaceTypeIcon placeType={req.place_type} size={28} />
                   </div>
                   <div className="w-full min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{req.name}</p>
@@ -212,7 +182,7 @@ export function PlaceRequestsPane() {
         <p className="text-xs font-mono text-primary mb-1">{reqRef(selectedIdx)}</p>
         <h2 className="pub-name text-3xl font-bold text-foreground mb-3">{selected.name}</h2>
         <div className="flex flex-wrap items-center gap-2 mb-5">
-          <AmenityChip amenity={selected.amenity} />
+          <PlaceTypeChip placeType={selected.place_type} />
           <StatusBadge status={selected.status} />
           {selected.address && <span className="text-sm text-muted-foreground">{selected.address}</span>}
         </div>

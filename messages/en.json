@@ -406,6 +406,7 @@
     "closedStatus": "Closed",
     "noHours": "No hours",
     "noReview": "No review yet",
+    "loading": "Loading...",
     "loadingMore": "Loading more...",
     "allLoaded": "All places loaded",
     "until": "until {time}"

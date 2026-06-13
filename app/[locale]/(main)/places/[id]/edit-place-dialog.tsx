@@ -5,11 +5,9 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { editPlace } from "@/app/actions/edit-place";
 import { EditPlaceSchema, type EditPlaceValues, type OpeningHours } from "@/lib/schemas";
-import { QUERY_KEYS } from "@/lib/query-keys";
 import type { Place } from "@/lib/supabase";
+import { useUpdatePlace } from "@/features/places/api/update-place";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,15 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
-const AMENITIES = [
-  { value: "pub", label: "Pub", icon: "🍺" },
-  { value: "bar", label: "Bar", icon: "🥂" },
-  { value: "restaurant", label: "Restaurant", icon: "🍽️" },
-  { value: "cafe", label: "Cafe", icon: "☕" },
-  { value: "nightclub", label: "Nightclub", icon: "🎶" },
-  { value: "biergarten", label: "Beer Garden", icon: "🌻" },
-] as const;
+import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/lib/place-type";
 
 const DAYS = ["mo", "tu", "we", "th", "fr", "sa", "su"] as const;
 type Day = (typeof DAYS)[number];
@@ -86,7 +76,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   markerId: string;
   markerName: string;
-  markerAmenity: string;
+  markerPlaceType: string;
   place: Place | null;
 };
 
@@ -95,12 +85,11 @@ export function EditPlaceDialog({
   onOpenChange,
   markerId,
   markerName,
-  markerAmenity,
+  markerPlaceType,
   place,
 }: Props) {
   const t = useTranslations("places");
   const tCommon = useTranslations("common");
-  const queryClient = useQueryClient();
   const [dayStates, setDayStates] = useState<Record<Day, DayState>>(() =>
     hoursToState(place?.opening_hours ?? null)
   );
@@ -109,7 +98,7 @@ export function EditPlaceDialog({
     resolver: zodResolver(EditPlaceSchema),
     defaultValues: {
       name: markerName,
-      amenity: markerAmenity as EditPlaceValues["amenity"],
+      place_type: markerPlaceType as EditPlaceValues["place_type"],
       address: place?.address ?? null,
       city: place?.city ?? null,
       phone: place?.phone ?? null,
@@ -119,19 +108,15 @@ export function EditPlaceDialog({
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: (values: EditPlaceValues) => editPlace(markerId, values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLACE(markerId) });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
-      toast.success("Place updated successfully.");
-      onOpenChange(false);
-    },
-  });
+  const mutation = useUpdatePlace(markerId);
 
   function onSubmit(values: EditPlaceValues) {
-    mutation.mutate({ ...values, opening_hours: stateToHours(dayStates) });
+    mutation.mutate({ ...values, opening_hours: stateToHours(dayStates) }, {
+      onSuccess: () => {
+        toast.success("Place updated successfully.");
+        onOpenChange(false);
+      },
+    });
   }
 
   function setDay(day: Day, patch: Partial<DayState>) {
@@ -166,13 +151,13 @@ export function EditPlaceDialog({
             {/* Category */}
             <FormField
               control={form.control}
-              name="amenity"
+              name="place_type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("categoryLabel")}</FormLabel>
                   <FormControl>
                     <div className="flex flex-wrap gap-2">
-                      {AMENITIES.map((a) => (
+                      {PLACE_TYPE_FORM_LIST.map((a) => (
                         <button
                           key={a.value}
                           type="button"
@@ -183,7 +168,7 @@ export function EditPlaceDialog({
                               : "border-input bg-transparent text-muted-foreground hover:border-ring hover:text-foreground"
                           }`}
                         >
-                          <span>{a.icon}</span>
+                          <PlaceTypeIcon placeType={a.value} size={14} />
                           <span>{a.label}</span>
                         </button>
                       ))}
