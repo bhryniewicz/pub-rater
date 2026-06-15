@@ -6,22 +6,24 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  supabase,
-  fetchAllMarkers,
-  fetchMarkersEnrichment,
-  type PubListItem,
-} from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useFilters } from "@/context/filter-context";
 import { useSearch } from "@/context/search-context";
 import { useProfile } from "@/features/profile/api/get-profile";
+import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
+import { getMarkersEnrichmentQueryOptions } from "@/features/markers/api/get-markers-enrichment";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
 import { isOpenNow, isOpenLate } from "@/lib/opening-hours";
+import {
+  PUB_LIST_PAGE_SIZE,
+  fetchPubListPage,
+  toQueryKey,
+  type QueryParams,
+} from "./get-pub-list-fetcher";
 
-export const PUB_LIST_PAGE_SIZE = 20;
+export { PUB_LIST_PAGE_SIZE };
 
 function haversineKm(
   lat1: number,
@@ -37,129 +39,6 @@ function haversineKm(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// Params the server query uses — only what Supabase can filter on directly,
-// plus pre-computed ID arrays for client-side filters (open/late/nearby/voivodeship).
-// Kept separate from filteredMarkers which is map-only.
-type QueryParams = {
-  searchSelectedId: string | null;
-  searchQuery: string;
-  placeTypeFilter: string[];
-  likedFilterActive: boolean;
-  likedIds: string[];
-  ownedFilterActive: boolean;
-  ownedIds: string[] | null;
-  minRatingFilter: number | null;
-  // null = filter not active (don't apply), [] = active but no matches (return empty)
-  openIds: string[] | null;
-  openLateIds: string[] | null;
-  nearbyIds: string[] | null;
-  voivodeshipIds: string[] | null;
-};
-
-async function fetchPubListPage(
-  pageParam: number,
-  p: QueryParams,
-): Promise<{
-  items: PubListItem[];
-  nextPage: number | null;
-  totalCount: number;
-}> {
-  console.log("starting query with params", p, "pageParam", pageParam);
-  const empty = { items: [], nextPage: null, totalCount: 0 };
-  let query = supabase.from("pub_list").select("*", { count: "exact" });
-
-  if (p.searchSelectedId) {
-    query = query.eq("id", p.searchSelectedId);
-  } else {
-    if (p.searchQuery) {
-      query = query.ilike("name", `%${p.searchQuery}%`);
-    }
-    if (p.likedFilterActive) {
-      if (p.likedIds.length === 0) return empty;
-      query = query.in("id", p.likedIds);
-    }
-    if (p.ownedFilterActive) {
-      const ids = p.ownedIds ?? [];
-      if (ids.length === 0) return empty;
-      query = query.in("id", ids);
-    }
-    if (p.placeTypeFilter.length > 0) {
-      query = query.in("place_type", p.placeTypeFilter);
-    }
-    if (p.voivodeshipIds !== null) {
-      if (p.voivodeshipIds.length === 0) return empty;
-      query = query.in("id", p.voivodeshipIds);
-    }
-  }
-
-  if (p.openIds !== null) {
-    if (p.openIds.length === 0) return empty;
-    query = query.in("id", p.openIds);
-  }
-  if (p.openLateIds !== null) {
-    if (p.openLateIds.length === 0) return empty;
-    query = query.in("id", p.openLateIds);
-  }
-  if (p.nearbyIds !== null) {
-    if (p.nearbyIds.length === 0) return empty;
-    query = query.in("id", p.nearbyIds);
-  }
-  if (p.minRatingFilter !== null) {
-    query = query.gte("app_rating", p.minRatingFilter);
-  }
-
-  query = query
-    .order("name")
-    .order("id")
-    .range(pageParam, pageParam + PUB_LIST_PAGE_SIZE - 1);
-
-  const { data, error, count } = await query;
-
-  console.log(error ? "query error" : "query success", { error, data, count });
-  if (error || !data) return empty;
-
-  return {
-    items: data as PubListItem[],
-    nextPage:
-      data.length === PUB_LIST_PAGE_SIZE
-        ? pageParam + PUB_LIST_PAGE_SIZE
-        : null,
-    totalCount: count ?? 0,
-  };
-}
-
-function toQueryKey(
-  categoryFilter: string[],
-  filterActive: boolean,
-  likedFilterActive: boolean,
-  ownedFilterActive: boolean,
-  openFilterActive: boolean,
-  openLateFilterActive: boolean,
-  minRatingFilter: number | null,
-  voivodeshipFilter: string | null,
-  radiusFilter: number | null,
-  searchQuery: string,
-  searchSelectedId: string | null,
-  userLat: number | null,
-  userLon: number | null,
-) {
-  return {
-    categoryFilter: [...categoryFilter].sort(),
-    filterActive,
-    likedFilterActive,
-    ownedFilterActive,
-    openFilterActive,
-    openLateFilterActive,
-    minRatingFilter,
-    voivodeshipFilter,
-    radiusFilter,
-    searchQuery,
-    searchSelectedId,
-    userLat: userLat !== null ? Math.round(userLat * 100) / 100 : null,
-    userLon: userLon !== null ? Math.round(userLon * 100) / 100 : null,
-  };
 }
 
 export function usePubList() {
@@ -179,8 +58,7 @@ export function usePubList() {
   } = useFilters();
 
   const { data: mapMarkers } = useSuspenseQuery({
-    queryKey: QUERY_KEYS.MARKERS,
-    queryFn: () => fetchAllMarkers(),
+    ...getMarkersQueryOptions(),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -188,8 +66,7 @@ export function usePubList() {
     openFilterActive || openLateFilterActive || minRatingFilter !== null;
 
   const { data: enrichment = {} } = useQuery({
-    queryKey: QUERY_KEYS.MARKERS_ENRICHMENT,
-    queryFn: () => fetchMarkersEnrichment(),
+    ...getMarkersEnrichmentQueryOptions(),
     staleTime: 5 * 60 * 1000,
     enabled: needsEnrichment,
   });
@@ -200,7 +77,7 @@ export function usePubList() {
     !!user && profile?.role === "owner",
   );
 
-  const likedPlaces = profile?.liked_places ?? [];
+  const likedPlaces = useMemo(() => profile?.liked_places ?? [], [profile?.liked_places]);
 
   const placeTypeFilter = useMemo(() => {
     if (categoryFilter.length > 0) return categoryFilter;

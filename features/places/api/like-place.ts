@@ -2,19 +2,26 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/features/profile/api/get-user";
 import { useProfile } from "@/features/profile/api/get-profile";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import type { UserData } from "@/hooks/use-user";
+import type { UserData } from "@/features/profile/api/get-user";
+import type { MutationConfig } from "@/lib/react-query";
 
-export function useLikePlace() {
+type UseLikePlaceOptions = {
+  mutationConfig?: MutationConfig<(placeId: string) => Promise<string[]>>;
+};
+
+export function useLikePlace({ mutationConfig }: UseLikePlaceOptions = {}) {
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { data: profile } = useProfile();
 
   const likedPlaces = profile?.liked_places ?? [];
+  const { onSuccess, ...restConfig } = mutationConfig || {};
 
   const mutation = useMutation({
+    ...restConfig,
     mutationFn: async (placeId: string) => {
       const isLiked = likedPlaces.includes(placeId);
       const updated = isLiked
@@ -51,6 +58,9 @@ export function useLikePlace() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
+    },
+    onSuccess: (data, ...args) => {
+      onSuccess?.(data, ...args);
     },
   });
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema, type PlaceRequest } from "@/lib/schemas";
+import { LocationRequestSchema, type PlaceRequest } from "@/features/requests/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
 async function fetchPlaceRequests(): Promise<PlaceRequest[]> {
@@ -15,9 +15,12 @@ async function fetchPlaceRequests(): Promise<PlaceRequest[]> {
   return (data ?? []).map((row) => LocationRequestSchema.parse(row) as PlaceRequest);
 }
 
-export function usePlaceRequests() {
-  return useSuspenseQuery({
+export const getPlaceRequestsQueryOptions = () =>
+  queryOptions({
     queryKey: QUERY_KEYS.PLACE_REQUESTS,
     queryFn: fetchPlaceRequests,
   });
+
+export function usePlaceRequests() {
+  return useSuspenseQuery(getPlaceRequestsQueryOptions());
 }

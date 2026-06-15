@@ -1,6 +1,6 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
@@ -20,9 +20,12 @@ async function fetchUsers(): Promise<AdminUser[]> {
   return (data ?? []) as AdminUser[];
 }
 
-export function useUsers() {
-  return useSuspenseQuery({
+export const getUsersQueryOptions = () =>
+  queryOptions({
     queryKey: QUERY_KEYS.USERS,
     queryFn: fetchUsers,
   });
+
+export function useUsers() {
+  return useSuspenseQuery(getUsersQueryOptions());
 }

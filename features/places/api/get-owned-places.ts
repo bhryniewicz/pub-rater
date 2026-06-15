@@ -1,6 +1,6 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
@@ -38,9 +38,12 @@ async function fetchOwnedPlaces(): Promise<OwnedPlace[]> {
   });
 }
 
-export function useOwnedPlaces() {
-  return useSuspenseQuery({
+export const getOwnedPlacesQueryOptions = () =>
+  queryOptions({
     queryKey: QUERY_KEYS.OWNED_PLACES,
     queryFn: fetchOwnedPlaces,
   });
+
+export function useOwnedPlaces() {
+  return useSuspenseQuery(getOwnedPlacesQueryOptions());
 }

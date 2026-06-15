@@ -1,27 +1,22 @@
-import { getTranslations } from "next-intl/server";
-import { requireDashboard } from "@/lib/dal";
-import { AdminConsole } from "./admin-console";
-import { OwnedPlaces } from "./owned-places";
+import { Suspense } from "react";
+import { requireDashboard } from "@/lib/auth";
+import { AdminConsole } from "@/features/admin/components/admin-console";
+import { OwnerConsole } from "@/features/owner/components/owner-console";
 
 export default async function DashboardPage() {
   const { role } = await requireDashboard();
-  const t = await getTranslations("admin");
 
   if (role === "admin") {
-    return <AdminConsole />;
+    return (
+      <Suspense>
+        <AdminConsole />
+      </Suspense>
+    );
   }
 
   return (
-    <main className="h-full overflow-y-auto bg-background px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-foreground">{t("yourPlaces")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("yourPlacesDesc")}
-          </p>
-        </div>
-        <OwnedPlaces />
-      </div>
-    </main>
+    <Suspense>
+      <OwnerConsole />
+    </Suspense>
   );
 }

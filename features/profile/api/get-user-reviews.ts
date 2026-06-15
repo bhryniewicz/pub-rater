@@ -1,8 +1,8 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { ReviewSchema, type Review } from "@/lib/schemas";
+import { ReviewSchema, type Review } from "@/features/places/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
 async function fetchUserReviews(userId: string): Promise<Review[]> {
@@ -15,9 +15,12 @@ async function fetchUserReviews(userId: string): Promise<Review[]> {
   return (data ?? []).map((row) => ReviewSchema.parse(row));
 }
 
-export function useUserReviews(userId: string) {
-  return useSuspenseQuery({
+export const getUserReviewsQueryOptions = (userId: string) =>
+  queryOptions({
     queryKey: QUERY_KEYS.USER_REVIEWS(userId),
     queryFn: () => fetchUserReviews(userId),
   });
+
+export function useUserReviews(userId: string) {
+  return useSuspenseQuery(getUserReviewsQueryOptions(userId));
 }

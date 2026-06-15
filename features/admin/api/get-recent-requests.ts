@@ -1,8 +1,8 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema } from "@/lib/schemas";
+import { LocationRequestSchema } from "@/features/requests/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
 async function fetchRecentRequests() {
@@ -16,9 +16,12 @@ async function fetchRecentRequests() {
   return (data ?? []).map((row) => LocationRequestSchema.parse(row));
 }
 
-export function useRecentRequests() {
-  return useSuspenseQuery({
+export const getRecentRequestsQueryOptions = () =>
+  queryOptions({
     queryKey: QUERY_KEYS.RECENT_REQUESTS,
     queryFn: fetchRecentRequests,
   });
+
+export function useRecentRequests() {
+  return useSuspenseQuery(getRecentRequestsQueryOptions());
 }

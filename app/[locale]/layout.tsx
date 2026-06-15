@@ -2,7 +2,7 @@ import { hasLocale, type AbstractIntlMessages } from "next-intl";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { NotificationWatcher } from "@/components/notification-watcher";
-import { IntlProvider } from "@/components/intl-provider";
+import { IntlProvider } from "@/context/intl-context";
 import plMessages from "@/messages/pl.json";
 import enMessages from "@/messages/en.json";
 

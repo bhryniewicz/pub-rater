@@ -3,8 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/features/profile/api/get-user";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 type Notification = {
   id: string;
@@ -54,11 +56,19 @@ function fireToast(n: Notification, onView: (markerId: string) => void) {
 export function NotificationWatcher() {
   const { user } = useUser();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!user) return;
 
     const userId = user.id;
+
+    function invalidatePlacesIfApproved(n: Notification) {
+      if (n.type === "approved" && n.request_type === "place_request") {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
+      }
+    }
 
     async function showUnread() {
       const { data } = await supabase
@@ -72,6 +82,7 @@ export function NotificationWatcher() {
 
       for (const n of data) {
         fireToast(n as Notification, (id) => router.push(`/places/${id}`));
+        invalidatePlacesIfApproved(n as Notification);
       }
 
       await supabase
@@ -96,6 +107,7 @@ export function NotificationWatcher() {
         (payload) => {
           const n = payload.new as Notification;
           fireToast(n, (id) => router.push(`/places/${id}`));
+          invalidatePlacesIfApproved(n);
           supabase
             .from("notifications")
             .update({ read: true })
@@ -108,7 +120,7 @@ export function NotificationWatcher() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, router]);
+  }, [user?.id, router, queryClient]);
 
   return null;
 }

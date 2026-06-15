@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchUser } from "@/hooks/use-user";
+import { fetchUser } from "@/features/profile/api/get-user";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
 export function useProfile(_userId?: string, _enabled?: boolean) {

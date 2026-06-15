@@ -1,8 +1,8 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { LocationRequestSchema, type OwnerClaim } from "@/lib/schemas";
+import { LocationRequestSchema, type OwnerClaim } from "@/features/requests/schemas";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
 async function fetchOwnerClaims(): Promise<OwnerClaim[]> {
@@ -15,9 +15,12 @@ async function fetchOwnerClaims(): Promise<OwnerClaim[]> {
   return (data ?? []).map((row) => LocationRequestSchema.parse(row) as OwnerClaim);
 }
 
-export function useOwnerClaims() {
-  return useSuspenseQuery({
+export const getOwnerClaimsQueryOptions = () =>
+  queryOptions({
     queryKey: QUERY_KEYS.OWNER_CLAIMS,
     queryFn: fetchOwnerClaims,
   });
+
+export function useOwnerClaims() {
+  return useSuspenseQuery(getOwnerClaimsQueryOptions());
 }

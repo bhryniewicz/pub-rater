@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/dal";
+import { getUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import OnboardForm from "./onboard-form";
+import { OnboardForm } from "@/features/profile/components/onboard-form";
 
 export default async function OnboardPage() {
   const user = await getUser();

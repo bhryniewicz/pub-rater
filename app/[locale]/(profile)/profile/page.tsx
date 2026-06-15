@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/dal";
+import { getUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { ProfileForm } from "./profile-form";
+import { ProfileForm } from "@/features/profile/components/profile-form";
 
 export default async function ProfilePage() {
   const user = await getUser();

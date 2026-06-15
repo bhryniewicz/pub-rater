@@ -14,4 +14,8 @@ export const QUERY_KEYS = {
   PLACE_REQUESTS: ["place_requests"] as const,
   OWNER_CLAIMS: ["owner_claims"] as const,
   USERS: ["users"] as const,
+  OWNER_STATS: ["owner_stats"] as const,
+  OWNER_RECENT_COMMENTS: ["owner_recent_comments"] as const,
+  OWNER_CHART_DATA: ["owner_chart_data"] as const,
+  OWNER_RATING_BREAKDOWN: ["owner_rating_breakdown"] as const,
 } as const;

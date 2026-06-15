@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import type { PlaceData } from "./get-place";
+import type { MutationConfig } from "@/lib/react-query";
 
 type ToggleThumbsUpInput = {
   reviewId: string;
@@ -12,9 +13,15 @@ type ToggleThumbsUpInput = {
   hasThumbedUp: boolean;
 };
 
-export function useToggleThumbsUp(markerId: string) {
+type UseToggleThumbsUpOptions = {
+  mutationConfig?: MutationConfig<(input: ToggleThumbsUpInput) => Promise<string[]>>;
+};
+
+export function useToggleThumbsUp(markerId: string, { mutationConfig }: UseToggleThumbsUpOptions = {}) {
   const queryClient = useQueryClient();
+  const { onSuccess, ...restConfig } = mutationConfig || {};
   return useMutation({
+    ...restConfig,
     mutationFn: async ({ reviewId, userId }: ToggleThumbsUpInput) => {
       const { data, error } = await supabase.rpc("toggle_thumbs_up", {
         p_review_id: reviewId,
@@ -45,16 +52,18 @@ export function useToggleThumbsUp(markerId: string) {
         queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), context.previous);
       }
     },
-    onSuccess: (newThumbsUps, { reviewId }) => {
+    onSuccess: (newThumbsUps, ...args) => {
+      const [vars] = args;
       queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), (old: PlaceData | undefined) => {
         if (!old) return old;
         return {
           ...old,
           reviews: old.reviews.map((r) =>
-            r.id === reviewId ? { ...r, thumbs_ups: newThumbsUps } : r,
+            r.id === vars.reviewId ? { ...r, thumbs_ups: newThumbsUps } : r,
           ),
         };
       });
+      onSuccess?.(newThumbsUps, ...args);
     },
   });
 }

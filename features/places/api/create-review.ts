@@ -4,12 +4,30 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, type Review } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import type { PlaceData } from "./get-place";
-import type { GuestCheckValues } from "@/components/guest-check-dialog";
+import type { GuestCheckValues } from "@/features/places/components/rate-dialog";
+import type { MutationConfig } from "@/lib/react-query";
 
-export function useCreateReview(markerId: string) {
+type CreateReviewInput = GuestCheckValues & { userId: string; userEmail: string };
+
+type UseCreateReviewOptions = {
+  mutationConfig?: MutationConfig<(values: CreateReviewInput) => Promise<Review>>;
+};
+
+export function useCreateReview(markerId: string, { mutationConfig }: UseCreateReviewOptions = {}) {
   const queryClient = useQueryClient();
+  const { onSuccess, ...restConfig } = mutationConfig || {};
   return useMutation({
-    mutationFn: async (values: GuestCheckValues & { userId: string; userEmail: string }) => {
+    onSuccess: (newReview, ...args) => {
+      queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), (old: PlaceData | undefined) => {
+        if (!old) return old;
+        return { ...old, reviews: [newReview, ...old.reviews] };
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
+      onSuccess?.(newReview, ...args);
+    },
+    ...restConfig,
+    mutationFn: async (values: CreateReviewInput) => {
       const { data: review, error } = await supabase
         .from("reviews")
         .insert({
@@ -28,14 +46,6 @@ export function useCreateReview(markerId: string) {
         .single();
       if (error) throw error;
       return review as Review;
-    },
-    onSuccess: (newReview) => {
-      queryClient.setQueryData(QUERY_KEYS.PLACE(markerId), (old: PlaceData | undefined) => {
-        if (!old) return old;
-        return { ...old, reviews: [newReview, ...old.reviews] };
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PUB_LIST] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MARKERS });
     },
   });
 }

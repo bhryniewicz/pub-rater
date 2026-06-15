@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import HomeContent from "./home-content";
+import HomeContent from "./_components/home-content";
 
 function Spinner() {
   return (

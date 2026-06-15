@@ -1,4 +1,4 @@
-import { PubLine } from "@/components/icons";
+import { PubLine } from "@/assets/icons";
 
 interface BeerRatingProps {
   rating: number;
