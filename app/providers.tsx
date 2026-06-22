@@ -10,6 +10,7 @@ import { SearchProvider } from "@/context/search-context";
 import { FilterProvider } from "@/context/filter-context";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
+import { posthog, initPostHog } from "@/lib/posthog";
 
 function AuthSync() {
   const queryClient = useQueryClient();
@@ -23,7 +24,24 @@ function AuthSync() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        // Drop the identified person so the next visitor on this device
+        // isn't merged into the previous user.
+        posthog.reset();
+      } else if (session?.user) {
+        // Tie all events to the real user id and attach person properties.
+        initPostHog();
+        if (process.env.NODE_ENV === "development") {
+          posthog.debug();
+          console.log("[posthog] identify", session.user.id, session.user.email);
+        }
+        posthog.identify(session.user.id, {
+          email: session.user.email,
+          display_name: session.user.user_metadata?.display_name,
+        });
+      }
+
       // INITIAL_SESSION fires on setup with the current session — the useQuery
       // in useUser() already handles the initial fetch, so skip it here.
       if (event === "INITIAL_SESSION") return;
