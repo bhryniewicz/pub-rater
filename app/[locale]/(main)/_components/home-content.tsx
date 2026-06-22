@@ -153,7 +153,7 @@ export default function HomeContent() {
           <div className="relative w-full h-full rounded-2xl overflow-hidden">
             <button
               onClick={() => setMobileView("list")}
-              className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-sm font-semibold shadow-lg border border-border"
+              className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm text-foreground rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg border border-border"
             >
               <LuArrowLeft size={16} />
               {t("listView")}

@@ -68,7 +68,7 @@ function BeerRating({
 }
 
 function Divider() {
-  return <div className="border-t border-dashed border-[#c4aa88] my-2" />;
+  return <div className="border-t border-dashed border-[#c4aa88] my-2 -mx-6" />;
 }
 
 export function RateDialog({
@@ -160,8 +160,7 @@ export function RateDialog({
       scrollable={true}
       maxWidth="max-w-[360px] w-full"
     >
-      <div className="bg-[#f5ede0] px-6 pb-3">
-        <Divider />
+      <div className="bg-[#f5ede0] px-6 pb-3 pt-3">
 
         {/* Overall rating */}
         <div>

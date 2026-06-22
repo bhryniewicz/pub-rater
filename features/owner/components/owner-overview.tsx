@@ -264,7 +264,7 @@ export function OwnerOverview() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6 space-y-6">
+    <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-6">
       {/* KPI cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {kpis.map((kpi, i) => (

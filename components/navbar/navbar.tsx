@@ -24,6 +24,7 @@ import {
   LuLogIn,
   LuLogOut,
   LuUserPlus,
+  LuHouse,
 } from "react-icons/lu";
 import { motion } from "framer-motion";
 
@@ -53,7 +54,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
 
   useEffect(() => setMounted(true), []);
 
-  function menuLinkClass(segment: string) {
+  function menuLinkClass(segment: string | null) {
     return `flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors ${
       activeSegment === segment
         ? "bg-secondary text-foreground font-medium"
@@ -69,6 +70,18 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
 
   const menuContent = (
     <div className="px-4 py-5 flex flex-col gap-1">
+      {/* Home link */}
+      <Link
+        href="/"
+        onClick={() => setMenuOpen(false)}
+        className={menuLinkClass(null)}
+      >
+        <LuHouse size={16} />
+        {t("home")}
+      </Link>
+
+      <hr className="border-border my-1" />
+
       {/* Theme toggle */}
       <button
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}

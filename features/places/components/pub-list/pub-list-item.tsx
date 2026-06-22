@@ -221,11 +221,6 @@ export function PubListItem({ marker, index, onShowOnMap }: Props) {
         )}
       </div>
 
-      {/* Mobile: barcode strip — full width at bottom */}
-      <div className="md:hidden px-4 py-3">
-        <TicketBarcodeHorizontal id={marker.id} name={marker.name} />
-      </div>
-
       {/* Desktop: ticket stub — right side */}
       <div className="hidden md:flex shrink-0 self-stretch -my-4 -mr-4 items-stretch min-h-0">
         {/* Perforated separator with notches */}

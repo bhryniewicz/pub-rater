@@ -55,7 +55,7 @@ export function SerratedTop() {
       style={{ display: "block", height: TIP_Y }}
       className="w-full"
     >
-      <path d={TOP_PATH} fill={TICKET.TEXT} />
+      <path d={BOTTOM_PATH} fill={TICKET.BG} />
     </svg>
   );
 }
@@ -65,7 +65,7 @@ export function SerratedBottom() {
     <svg
       viewBox={`0 0 ${TOTAL_W} ${TIP_Y}`}
       preserveAspectRatio="none"
-      style={{ display: "block", height: TIP_Y }}
+      style={{ display: "block", height: TIP_Y, transform: "scaleY(-1)" }}
       className="w-full"
     >
       <path d={BOTTOM_PATH} fill={TICKET.BG} />
@@ -168,7 +168,7 @@ export function TicketLayout({
   );
 
   const body = (
-    <div className="relative">
+    <div className="relative" style={{ backgroundColor: TICKET.BG }}>
       {onClose && (
         <button
           type="button"
@@ -193,35 +193,35 @@ export function TicketLayout({
   const receipt = (
     <>
       <SerratedTop />
-      {scrollable ? (
-        body
-      ) : (
-        <div className="max-h-[80vh] overflow-y-auto">
-          {body}
-        </div>
-      )}
+      <div className="max-h-[80vh] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        {body}
+      </div>
       <SerratedBottom />
     </>
+  );
+
+  const scrollableReceipt = (
+    <div className="flex flex-col max-h-[calc(100dvh-2rem)]">
+      <SerratedTop />
+      <div
+        className="overflow-y-auto flex-1"
+        style={{ scrollbarWidth: "none", backgroundColor: TICKET.BG }}
+      >
+        {body}
+      </div>
+      <SerratedBottom />
+    </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className={`p-0 border-0 rounded-none shadow-2xl overflow-visible [&>button]:hidden ${maxWidth}`}
-        style={{ backgroundColor: TICKET.BG }}
+        className={`p-0 gap-0 border-0 rounded-none shadow-none overflow-visible [&>button]:hidden ${maxWidth}`}
+        style={{ backgroundColor: "transparent" }}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        {scrollable ? (
-          <div
-            className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {receipt}
-          </div>
-        ) : (
-          receipt
-        )}
+        {scrollable ? scrollableReceipt : receipt}
       </DialogContent>
     </Dialog>
   );

@@ -35,7 +35,8 @@
     "toggleTheme": "Zmień motyw",
     "langPl": "PL",
     "langEn": "EN",
-    "logOut": "Wyloguj się"
+    "logOut": "Wyloguj się",
+    "home": "Strona główna"
   },
   "home": {
     "loading": "Ładowanie...",
@@ -143,6 +144,8 @@
     "noAmenities": "Brak udogodnień.",
     "getThere": "Jak dojechać",
     "navigate": "Nawiguj",
+    "directions": "Wskazówki",
+    "share": "Udostępnij",
     "copyLink": "Kopiuj link",
     "copied": "Skopiowano!",
     "editPlace": "Edytuj szczegóły miejsca",
@@ -154,6 +157,10 @@
     "topRated": "Najlepiej oceniane",
     "noComments": "Brak komentarzy. Bądź pierwszy!",
     "loadMore": "Załaduj więcej ↓",
+    "whatRatersTick": "Co oceniający zaznaczyli",
+    "atmosphere": "Atmosfera",
+    "service": "Obsługa",
+    "theSpace": "Przestrzeń",
     "placeOwner": "Właściciel",
     "reply": "Odpowiedz",
     "report": "Zgłoś",

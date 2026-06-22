@@ -1,23 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { posthog, initPostHog } from "@/lib/posthog";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { type Place, type Review } from "@/lib/supabase";
+import { type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS } from "@/lib/opening-hours";
 import type { OpeningHours } from "@/features/places/schemas";
 import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
-import { LuCopy, LuNavigation, LuThumbsUp, LuChevronRight, LuPencil } from "react-icons/lu";
+import { LuNavigation, LuThumbsUp, LuPencil, LuCheck, LuShare2 } from "react-icons/lu";
 import { PubLine } from "@/assets/icons";
-import { RatingBreakdown } from "@/components/rating-breakdown";
 import { ClaimForm } from "@/features/requests/components/claim-form";
 import { EditPlaceDialog } from "@/features/admin/components/edit-place-dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { RateDialog, type GuestCheckValues } from "@/features/places/components/rate-dialog";
-import { usePlace, type MarkerInfo } from "@/features/places/api/get-place";
+import { usePlace } from "@/features/places/api/get-place";
 import { useCreateReview } from "@/features/places/api/create-review";
 import { useToggleThumbsUp } from "@/features/places/api/toggle-thumbs-up";
 
@@ -35,18 +35,8 @@ function formatDate(iso: string): string {
 
 export function PlaceDetail() {
   const t = useTranslations("places");
-  const tCommon = useTranslations("common");
-  const DAY_LABELS: Record<string, string> = {
-    mo: t("monday"),
-    tu: t("tuesday"),
-    we: t("wednesday"),
-    th: t("thursday"),
-    fr: t("friday"),
-    sa: t("saturday"),
-    su: t("sunday"),
-  };
+  const tGC = useTranslations("guestCheck");
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const { user, isOwner, isAdmin } = useUser();
   const { coords: userLocation } = useGeolocation();
   const [copied, setCopied] = useState(false);
@@ -72,8 +62,20 @@ export function PlaceDetail() {
   const { data } = usePlace(id);
   const { marker, place, reviews } = data;
 
-  const commentMutation = useCreateReview(id);
+  useEffect(() => {
+    if (!marker) return;
+    initPostHog();
+    posthog.capture("place_viewed", {
+      place_id: id,
+      place_name: marker.name,
+      place_type: marker.place_type,
+      city: place?.city ?? null,
+      rating: place?.app_rating ?? null,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
+  const commentMutation = useCreateReview(id);
   const commentReviews = reviews.filter((r) => r.comment);
 
   const avgRating =
@@ -82,253 +84,282 @@ export function PlaceDetail() {
       ? Math.round((reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length) * 10) / 10
       : null);
 
-  const ratingCounts = [5, 4, 3, 2, 1].map(
-    (star) => reviews.filter((r) => r.rating === star).length,
-  );
-  const maxCount = Math.max(...ratingCounts, 1);
+  function avgSubRating(field: "atmosphere" | "service" | "space") {
+    const vals = reviews.map((r) => r[field]).filter((v): v is number => v != null && v > 0);
+    return vals.length ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10 : null;
+  }
+  const avgAtmosphere = avgSubRating("atmosphere");
+  const avgService = avgSubRating("service");
+  const avgSpace = avgSubRating("space");
+
+  const tickedKeys = new Set(reviews.flatMap((r) => r.additional_info ?? []));
 
   const now = new Date();
   const jsDay = now.getDay();
   const todayKey = DAY_KEYS[jsDay === 0 ? 6 : jsDay - 1];
+  const todayHours = place?.opening_hours?.[todayKey];
+  const todayHoursLabel = todayHours
+    ? `${todayHours.open} – ${todayHours.close ?? "late"}`
+    : null;
+
+  const showEdit = isAdmin || (isOwner && marker.owner_id === user?.id);
+  const showClaim = (isOwner || isAdmin) && !marker.owner_id;
 
   return (
     <main className="flex-1 overflow-y-auto bg-background">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4 sm:mb-6">
-          <Link href="/" className="hover:text-foreground transition-colors">{t("home")}</Link>
-          <LuChevronRight className="w-3 h-3" />
-          {place?.city && (
-            <>
-              <span>{place.city}</span>
-              <LuChevronRight className="w-3 h-3" />
-            </>
-          )}
-          <span className="pub-name text-foreground font-medium">{marker.name}</span>
-        </nav>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
 
-        {/* Hero */}
-        <div className="flex flex-col md:grid md:grid-cols-5 gap-6 mb-6 bg-card border border-border rounded-2xl p-5 sm:p-8">
-          <div className="md:col-span-3 flex flex-col gap-4">
-            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              {marker.place_type}
-            </div>
-            <h1 className="pub-name text-3xl sm:text-4xl font-black text-foreground leading-tight">{marker.name}</h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {t("noDescription")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 rounded-full bg-secondary border border-border text-xs font-medium text-muted-foreground capitalize">
-                {marker.place_type}
-              </span>
-            </div>
+        {/* Title */}
+        <div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+            {marker.place_type}
           </div>
-          <div className="md:col-span-2">
-            <div className="flex items-end gap-3 mb-3">
-              <span className="text-5xl sm:text-6xl font-black text-primary leading-none">
+          <h1 className="pub-name text-4xl sm:text-5xl font-black text-foreground leading-tight mb-2 uppercase">
+            {marker.name}
+          </h1>
+          {place?.city && (
+            <p className="text-sm text-muted-foreground">{place.city}</p>
+          )}
+        </div>
+
+        {/* Rating */}
+        <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+          {/* Overall */}
+          <div className="shrink-0">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-6xl font-black text-primary leading-none">
                 {avgRating != null ? avgRating.toFixed(1) : "—"}
               </span>
-              <div className="pb-1">
-                <div className="flex gap-0.5 mb-0.5">
-                  {[1, 2, 3, 4, 5].map((s) =>
-                    avgRating != null && avgRating >= s ? (
-                      <PubLine key={s} size={18} className="text-primary" />
-                    ) : (
-                      <PubLine key={s} size={18} className="text-muted-foreground/40" />
-                    ),
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {reviews.length !== 1
-                    ? t("reviewsPlural", { count: reviews.length })
-                    : t("reviews", { count: reviews.length })}
-                </p>
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((s) =>
+                  avgRating != null && avgRating >= s ? (
+                    <PubLine key={s} size={18} className="text-primary" />
+                  ) : (
+                    <PubLine key={s} size={18} className="text-muted-foreground/40" />
+                  ),
+                )}
               </div>
             </div>
-            <RatingBreakdown
-              items={[5, 4, 3, 2, 1].map((star, i) => ({ star, count: ratingCounts[i] }))}
+            <p className="text-xs text-muted-foreground">
+              {reviews.length !== 1
+                ? t("reviewsPlural", { count: reviews.length })
+                : t("reviews", { count: reviews.length })}
+            </p>
+          </div>
+
+          {/* Sub-rating bars */}
+          <div className="flex-1 space-y-2.5 sm:pt-2">
+            {[
+              { label: t("atmosphere"), value: avgAtmosphere },
+              { label: t("service"), value: avgService },
+              { label: t("theSpace"), value: avgSpace },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-24 shrink-0">
+                  {label}
+                </span>
+                <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: value != null ? `${(value / 5) * 100}%` : "0%" }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-foreground w-6 text-right">
+                  {value != null ? value.toFixed(1) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
+          {user ? (
+            <Button onClick={() => setRateOpen(true)}>
+              {t("rateThisPlace")}
+            </Button>
+          ) : (
+            <Link href="/login">
+              <Button>{t("rateThisPlace")}</Button>
+            </Link>
+          )}
+          <button
+            onClick={() => navigateToPlace(marker.lat, marker.lon)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <LuNavigation className="w-4 h-4 shrink-0" />
+            {t("directions")}
+          </button>
+          <button
+            onClick={copyLink}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <LuShare2 className="w-4 h-4 shrink-0" />
+            {copied ? t("copied") : t("share")}
+          </button>
+          {showEdit && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+            >
+              <LuPencil className="w-4 h-4 shrink-0" />
+              {t("editPlace")}
+            </button>
+          )}
+          {showClaim && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors">
+                  {t("claimThis")}
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <ClaimForm markerId={marker.id} />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+
+        {/* The Basics */}
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+            {t("placeDetails")}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            <BasicsPill label={t("address")} value={place?.address} />
+            <BasicsPill label={t("phone")} value={place?.phone} />
+            <BasicsPill
+              label={t("website")}
+              value={
+                place?.website ? (
+                  <a
+                    href={place.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {place.website.replace(/^https?:\/\//, "")}
+                  </a>
+                ) : null
+              }
+            />
+            <BasicsPill label={t("instagram")} value={null} />
+            <BasicsPill label={t("price")} value={null} />
+            <BasicsPill
+              label={t("hours")}
+              value={
+                todayHoursLabel ? (
+                  <span className="flex items-center gap-1.5">
+                    {place?.opening_hours && (
+                      <OpenStatusBadge hours={place.opening_hours} />
+                    )}
+                    {todayHoursLabel}
+                  </span>
+                ) : (
+                  place?.opening_hours ? (
+                    <OpenStatusBadge hours={place.opening_hours} />
+                  ) : null
+                )
+              }
             />
           </div>
         </div>
 
-        {/* Main content grid — desktop: 5-col (comments left, sidebar right); mobile: stacked with sidebar first */}
-        <div className="flex flex-col md:grid md:grid-cols-5 gap-6">
-          {/* Sidebar — order-first on mobile so it stacks above comments */}
-          <div className="order-first md:order-last md:col-span-2 space-y-4">
-            {/* Get There — second section (below hero) */}
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                {t("getThere")}
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => navigateToPlace(marker.lat, marker.lon)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
-                >
-                  <LuNavigation className="w-4 h-4 shrink-0" />
-                  {t("navigate")}
-                </button>
-                <button
-                  onClick={copyLink}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
-                >
-                  <LuCopy className="w-4 h-4 shrink-0" />
-                  {copied ? t("copied") : t("copyLink")}
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                {t("placeDetails")}
-              </h3>
-              <div className="space-y-3">
-                <SidebarRow label={t("address")} value={place?.address} />
-                <SidebarRow label={t("city")} value={place?.city} />
-                <SidebarRow label={t("phone")} value={place?.phone} />
-                <SidebarRow
-                  label={t("website")}
-                  value={
-                    place?.website ? (
-                      <a
-                        href={place.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline truncate"
-                      >
-                        {place.website.replace(/^https?:\/\//, "")}
-                      </a>
-                    ) : null
-                  }
-                />
-                <SidebarRow label={t("instagram")} value={null} />
-                <SidebarRow label={t("price")} value={null} />
-                <SidebarRow label={t("founded")} value={null} />
-                <SidebarRow label={t("capacity")} value={null} />
-                <SidebarRow label={t("onTap")} value={null} />
-              </div>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  {t("hours")}
-                </h3>
-                {place?.opening_hours && (
-                  <OpenStatusBadge hours={place.opening_hours} />
-                )}
-              </div>
-              {place?.opening_hours ? (
-                <div className="space-y-1">
-                  {DAY_KEYS.map((key) => {
-                    const day = place.opening_hours![key];
-                    const isToday = key === todayKey;
-                    return (
-                      <div
-                        key={key}
-                        className={`flex items-center justify-between py-1.5 px-2 rounded-lg ${isToday ? "bg-secondary font-semibold text-foreground" : "text-muted-foreground"}`}
-                      >
-                        <span className="text-xs w-24">{DAY_LABELS[key]}</span>
-                        <span className="text-xs">
-                          {day ? `${day.open} – ${day.close ?? "late"}` : tCommon("closed")}
-                        </span>
-                      </div>
-                    );
-                  })}
+        {/* What Raters Tick */}
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+            {t("whatRatersTick")}
+          </h3>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+            {(
+              [
+                { key: "great_beer_selection", label: tGC("beerSelection") },
+                { key: "lots_of_beers_on_tap", label: tGC("beersOnTap") },
+                { key: "serves_food", label: tGC("servesFood") },
+                { key: "live_music", label: tGC("liveMusic") },
+                { key: "dog_friendly", label: tGC("dogFriendly") },
+                { key: "outdoor_seating", label: tGC("outdoor") },
+                { key: "smoking_area", label: tGC("smoking") },
+              ] as const
+            ).map(({ key, label }) => {
+              const ticked = tickedKeys.has(key);
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <span
+                    className={`w-4 h-4 shrink-0 rounded-[3px] border flex items-center justify-center transition-colors ${
+                      ticked ? "bg-primary border-primary" : "border-border bg-secondary"
+                    }`}
+                  >
+                    {ticked && <LuCheck className="w-2.5 h-2.5 text-primary-foreground stroke-[3]" />}
+                  </span>
+                  <span className="text-xs text-foreground capitalize">
+                    {label.toLowerCase()}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">{t("noHours")}</p>
-              )}
-            </div>
+              );
+            })}
+          </div>
+        </div>
 
-            <div className="bg-card border border-border rounded-2xl p-5">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-                {t("amenities")}
-              </h3>
-              <p className="text-xs text-muted-foreground">{t("noAmenities")}</p>
+        {/* The Conversation */}
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                {t("theConversation")}
+              </p>
+              <h2 className="text-2xl sm:text-3xl font-black text-foreground">
+                {t("comments")}
+                <span className="text-xl font-medium text-muted-foreground ml-3">· {commentReviews.length}</span>
+              </h2>
             </div>
+            <select className="text-xs font-medium bg-secondary border border-border rounded-lg px-3 py-2 text-foreground">
+              <option>{t("newestFirst")}</option>
+              <option>{t("oldestFirst")}</option>
+              <option>{t("topRated")}</option>
+            </select>
+          </div>
 
-            {(isAdmin || (isOwner && marker.owner_id === user?.id)) && (
-              <button
-                onClick={() => setEditOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors"
-              >
-                <LuPencil className="w-4 h-4 shrink-0" />
-                {t("editPlace")}
+          <RateDialog
+            open={rateOpen}
+            onOpenChange={setRateOpen}
+            markerName={marker.name}
+            markerPlaceType={marker.place_type}
+            placeCity={place?.city}
+            placeShortCode={place?.short_code}
+            onSubmit={(values: GuestCheckValues) =>
+              commentMutation.mutate(
+                { ...values, userId: user!.id, userEmail: user!.email! },
+                { onSuccess: () => setRateOpen(false) },
+              )
+            }
+            isPending={commentMutation.isPending}
+            isError={commentMutation.isError}
+          />
+
+          {commentReviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noComments")}</p>
+          ) : (
+            <div className="space-y-3">
+              {commentReviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  ownerUserId={marker.owner_id}
+                  userId={user?.id ?? null}
+                  markerId={id}
+                />
+              ))}
+            </div>
+          )}
+
+          {commentReviews.length > 0 && (
+            <div className="mt-6 text-center">
+              <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                {t("loadMore")}
               </button>
-            )}
-
-            {(isOwner || isAdmin) && !marker.owner_id && (
-              <ClaimForm markerId={marker.id} />
-            )}
-          </div>
-
-          {/* Comments — order-last on mobile, left column on desktop */}
-          <div className="order-last md:order-first md:col-span-3">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                  {t("theConversation")}
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-black text-foreground">
-                  {t("comments")}
-                  <span className="text-xl font-medium text-muted-foreground ml-3">· {commentReviews.length}</span>
-                </h2>
-              </div>
-              <div className="flex items-center gap-3">
-                {user ? (
-                  <Button onClick={() => setRateOpen(true)}>
-                    {t("rateThisPlace")}
-                  </Button>
-                ) : (
-                  <Link href="/login">
-                    <Button>Rate this place</Button>
-                  </Link>
-                )}
-                <select className="text-xs font-medium bg-secondary border border-border rounded-lg px-3 py-2 text-foreground">
-                  <option>{t("newestFirst")}</option>
-                  <option>{t("oldestFirst")}</option>
-                  <option>{t("topRated")}</option>
-                </select>
-              </div>
             </div>
-
-            <RateDialog
-              open={rateOpen}
-              onOpenChange={setRateOpen}
-              markerName={marker.name}
-              markerPlaceType={marker.place_type}
-              placeCity={place?.city}
-              placeShortCode={place?.short_code}
-              onSubmit={(values: GuestCheckValues) => commentMutation.mutate({ ...values, userId: user!.id, userEmail: user!.email! }, { onSuccess: () => setRateOpen(false) })}
-              isPending={commentMutation.isPending}
-              isError={commentMutation.isError}
-            />
-
-            {commentReviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("noComments")}</p>
-            ) : (
-              <div className="space-y-3">
-                {commentReviews.map((review) => (
-                  <ReviewCard
-                    key={review.id}
-                    review={review}
-                    ownerUserId={marker.owner_id}
-                    userId={user?.id ?? null}
-                    markerId={id}
-                  />
-                ))}
-              </div>
-            )}
-
-            {commentReviews.length > 0 && (
-              <div className="mt-6 text-center">
-                <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                  {t("loadMore")}
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -366,7 +397,7 @@ function ReviewCard({
   const thumbsMutation = useToggleThumbsUp(markerId);
 
   return (
-    <div className="bg-card border border-border rounded-2xl px-5 py-4">
+    <div className="py-4 border-b border-border last:border-0">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
@@ -406,8 +437,6 @@ function ReviewCard({
         <p className="text-sm text-foreground leading-relaxed mb-3">{review.comment}</p>
       )}
 
-      <div className="flex flex-wrap gap-1.5 mb-3" />
-
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <button
           onClick={() => thumbsMutation.mutate({ reviewId: review.id, userId: userId!, thumbsUps, hasThumbedUp })}
@@ -417,20 +446,19 @@ function ReviewCard({
           <LuThumbsUp className="w-3.5 h-3.5" />
           {thumbsUps.length > 0 && <span className="ml-0.5">{thumbsUps.length}</span>}
         </button>
-        <button className="hover:text-foreground transition-colors">{t("reply")}</button>
         <button className="hover:text-foreground transition-colors ml-auto">{t("report")}</button>
       </div>
     </div>
   );
 }
 
-function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
+function BasicsPill({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-4">
-      <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground w-20 shrink-0 pt-0.5">
+    <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-secondary border border-border">
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0 pt-px">
         {label}
       </span>
-      <span className="text-sm text-foreground min-w-0">
+      <span className="text-xs text-foreground min-w-0">
         {value ?? <span className="text-muted-foreground/50">—</span>}
       </span>
     </div>
@@ -442,9 +470,9 @@ function OpenStatusBadge({ hours }: { hours: OpeningHours }) {
   const open = isOpenNow(hours);
   return (
     <span
-      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${open ? "bg-open/10 text-open" : "bg-muted text-muted-foreground"}`}
+      className={`inline-flex items-center gap-1 text-[10px] font-bold ${open ? "text-open" : "text-muted-foreground"}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${open ? "bg-open" : "bg-muted-foreground"}`} />
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${open ? "bg-open" : "bg-muted-foreground"}`} />
       {open ? t("open") : t("closed")}
     </span>
   );

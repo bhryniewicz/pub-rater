@@ -190,6 +190,7 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
         open={open}
         onOpenChange={handleClose}
         title="SUGGEST A PLACE"
+        onClose={() => handleClose(false)}
       >
         <Form {...form}>
           <form
@@ -394,7 +395,7 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
             )}
 
             {/* Actions */}
-            <div className="py-5 flex flex-col gap-2">
+            <div className="py-5">
               <button
                 type="submit"
                 disabled={mutation.isPending || outsidePoland}
@@ -402,14 +403,6 @@ export function AddPlaceDialog({ open, onOpenChange, initialCenter }: Props) {
                 style={{ backgroundColor: TICKET.ACCENT, color: TICKET.BG }}
               >
                 {mutation.isPending ? "SUBMITTING..." : "SUBMIT REQUEST"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleClose(false)}
-                className="font-mono text-[9px] uppercase tracking-[0.25em] py-2 text-center cursor-pointer"
-                style={{ color: TICKET.MUTED }}
-              >
-                CANCEL
               </button>
             </div>
           </form>

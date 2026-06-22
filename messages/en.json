@@ -35,7 +35,8 @@
     "toggleTheme": "Toggle theme",
     "langPl": "PL",
     "langEn": "EN",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "home": "Home"
   },
   "home": {
     "loading": "Loading...",
@@ -143,6 +144,8 @@
     "noAmenities": "No amenities listed yet.",
     "getThere": "Get There",
     "navigate": "Navigate",
+    "directions": "Directions",
+    "share": "Share",
     "copyLink": "Copy link",
     "copied": "Copied!",
     "editPlace": "Edit place details",
@@ -154,6 +157,10 @@
     "topRated": "Top rated",
     "noComments": "No comments yet. Be the first!",
     "loadMore": "Load more comments ↓",
+    "whatRatersTick": "What Raters Tick",
+    "atmosphere": "Atmosphere",
+    "service": "Service",
+    "theSpace": "The Space",
     "placeOwner": "Place Owner",
     "reply": "Reply",
     "report": "Report",
