@@ -65,7 +65,7 @@ export function PlaceDetail() {
   useEffect(() => {
     if (!marker) return;
     initPostHog();
-    posthog.capture("place_viewed", {
+    posthog.capture("$pageview", {
       place_id: id,
       place_name: marker.name,
       place_type: marker.place_type,
@@ -208,10 +208,12 @@ export function PlaceDetail() {
           )}
           {showClaim && (
             <Dialog>
-              <DialogTrigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors">
-                  {t("claimThis")}
-                </button>
+              <DialogTrigger
+                render={
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors" />
+                }
+              >
+                {t("claimThis")}
               </DialogTrigger>
               <DialogContent className="max-w-sm">
                 <ClaimForm markerId={marker.id} />
