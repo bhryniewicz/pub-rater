@@ -16,6 +16,10 @@ function AuthSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Init on mount so pageviews (capture_pageview: "history_change") fire on
+    // every route for all visitors, including anonymous ones.
+    initPostHog();
+
     function invalidateUser() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER });
     }

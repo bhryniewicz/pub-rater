@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { posthog, initPostHog } from "@/lib/posthog";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type Review } from "@/lib/supabase";
@@ -61,19 +60,6 @@ export function PlaceDetail() {
 
   const { data } = usePlace(id);
   const { marker, place, reviews } = data;
-
-  useEffect(() => {
-    if (!marker) return;
-    initPostHog();
-    posthog.capture("$pageview", {
-      place_id: id,
-      place_name: marker.name,
-      place_type: marker.place_type,
-      city: place?.city ?? null,
-      rating: place?.app_rating ?? null,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
 
   const commentMutation = useCreateReview(id);
   const commentReviews = reviews.filter((r) => r.comment);
