@@ -21,10 +21,10 @@ export const MapMarkerSchema = z.object({
   place_type: z.string(),
   lat: z.number(),
   lon: z.number(),
-  outdoor_seating: z.boolean().nullable(),
   voivodeship: z.string().nullable(),
   opening_hours: OpeningHoursSchema.nullable(),
   app_rating: z.number().nullable(),
+  app_review_count: z.number().nullable(),
 })
 
 export const PubListItemSchema = z.object({

@@ -108,10 +108,7 @@ export function SearchBar() {
     if (!searchQuery && !searchSelectedId) setInput("");
   }, [searchQuery, searchSelectedId]);
 
-  const { data: markers = [] } = useQuery({
-    ...getMarkersQueryOptions(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: markers = [] } = useQuery(getMarkersQueryOptions());
 
   const suggestions =
     debouncedInput.length >= 1

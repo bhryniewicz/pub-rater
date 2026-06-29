@@ -9,7 +9,6 @@ import { useProfile } from "@/features/profile/api/get-profile";
 import { PubList } from "@/features/places/components/pub-list/pub-list";
 import { AgeGate } from "@/components/age-gate";
 import { useUser } from "@/features/profile/api/get-user";
-import { useGeolocation } from "@/context/geolocation-context";
 import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
 import { LuArrowLeft } from "react-icons/lu";
@@ -20,12 +19,11 @@ import {
 } from "@/features/places/place-type";
 import { OpenToggle } from "@/components/open-toggle";
 
-const Map = dynamic(() => import("@/features/places/components/map"), { ssr: false });
+const Map = dynamic(() => import("@/features/places/components/map/map"), { ssr: false });
 
 export default function HomeContent() {
   const t = useTranslations("home");
   const { user, loading: userLoading } = useUser();
-  const { coords: userLocation } = useGeolocation();
   const { searchSelectedId, clearSearch } = useSearch();
   const {
     categoryFilter,
@@ -119,8 +117,6 @@ export default function HomeContent() {
     }
   }
 
-  const preferences = profile?.preferences ?? null;
-
   return (
     <main className="flex flex-col flex-1 min-h-0">
       <AgeGate />
@@ -148,9 +144,9 @@ export default function HomeContent() {
           />
         </div>
         <div
-          className={`min-h-0 pb-3 md:pb-4 pl-2 ${mobileView === "list" ? "hidden md:block" : "flex-1 md:flex-none"}`}
+          className={`min-h-0 md:pb-4 md:pl-2 ${mobileView === "list" ? "hidden md:block" : "flex-1 md:flex-none"}`}
         >
-          <div className="relative w-full h-full rounded-2xl overflow-hidden">
+          <div className="relative w-full h-full md:rounded-2xl overflow-hidden">
             <button
               onClick={() => setMobileView("list")}
               className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm text-foreground rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg border border-border"
@@ -161,13 +157,7 @@ export default function HomeContent() {
             <div className="md:hidden absolute top-4 right-4 z-10 shadow-lg">
               <OpenToggle className="bg-background/90 backdrop-blur-sm border-border/80" />
             </div>
-            <Map
-              markers={filteredMarkers}
-              focusedMarker={focusedMarker}
-              userLocation={userLocation}
-              active={mobileView === "map"}
-              automaticZoom={preferences?.automatic_zoom ?? true}
-            />
+            <Map markers={filteredMarkers} focusedMarker={focusedMarker} />
           </div>
         </div>
       </div>

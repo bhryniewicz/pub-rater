@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useInfiniteQuery,
-  useQuery,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import { useUser } from "@/features/profile/api/get-user";
@@ -13,7 +9,6 @@ import { useFilters } from "@/context/filter-context";
 import { useSearch } from "@/context/search-context";
 import { useProfile } from "@/features/profile/api/get-profile";
 import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
-import { getMarkersEnrichmentQueryOptions } from "@/features/markers/api/get-markers-enrichment";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
 import { isOpenNow, isOpenLate } from "@/lib/opening-hours";
 import {
@@ -57,19 +52,9 @@ export function usePubList() {
     radiusFilter,
   } = useFilters();
 
-  const { data: mapMarkers } = useSuspenseQuery({
-    ...getMarkersQueryOptions(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const needsEnrichment =
-    openFilterActive || openLateFilterActive || minRatingFilter !== null;
-
-  const { data: enrichment = {} } = useQuery({
-    ...getMarkersEnrichmentQueryOptions(),
-    staleTime: 5 * 60 * 1000,
-    enabled: needsEnrichment,
-  });
+  const { data: mapMarkers = [], isSuccess: markersReady } = useQuery(
+    getMarkersQueryOptions(),
+  );
 
   const { data: profile } = useProfile(user?.id, !!user && !userLoading);
   const { data: ownedIds = null } = useOwnedMarkers(
@@ -92,22 +77,16 @@ export function usePubList() {
   const openIds = useMemo(() => {
     if (!openFilterActive) return null;
     return mapMarkers
-      .filter((m) => {
-        const hours = enrichment[m.id]?.opening_hours ?? m.opening_hours;
-        return hours != null && isOpenNow(hours);
-      })
+      .filter((m) => m.opening_hours != null && isOpenNow(m.opening_hours))
       .map((m) => m.id);
-  }, [openFilterActive, mapMarkers, enrichment]);
+  }, [openFilterActive, mapMarkers]);
 
   const openLateIds = useMemo(() => {
     if (!openLateFilterActive) return null;
     return mapMarkers
-      .filter((m) => {
-        const hours = enrichment[m.id]?.opening_hours ?? m.opening_hours;
-        return hours != null && isOpenLate(hours);
-      })
+      .filter((m) => m.opening_hours != null && isOpenLate(m.opening_hours))
       .map((m) => m.id);
-  }, [openLateFilterActive, mapMarkers, enrichment]);
+  }, [openLateFilterActive, mapMarkers]);
 
   const nearbyIds = useMemo(() => {
     if (radiusFilter === null || !userLocation) return null;
@@ -162,10 +141,9 @@ export function usePubList() {
       result = result.filter((m) => s.has(m.id));
     }
     if (minRatingFilter !== null) {
-      result = result.filter((m) => {
-        const rating = enrichment[m.id]?.app_rating ?? m.app_rating;
-        return rating !== null && rating >= minRatingFilter;
-      });
+      result = result.filter(
+        (m) => m.app_rating !== null && m.app_rating >= minRatingFilter,
+      );
     }
     if (nearbyIds !== null) {
       const s = new Set(nearbyIds);
@@ -186,12 +164,19 @@ export function usePubList() {
     openIds,
     openLateIds,
     minRatingFilter,
-    enrichment,
     nearbyIds,
   ]);
 
+  // Filters whose ID lists are derived client-side from the marker payload —
+  // the list query must wait for markers to load, else it would briefly return empty.
+  const needsMarkers =
+    openFilterActive ||
+    openLateFilterActive ||
+    radiusFilter !== null ||
+    voivodeshipFilter !== null;
+
   const enabled =
-    (!needsEnrichment || Object.keys(enrichment).length > 0) &&
+    (!needsMarkers || markersReady) &&
     (!likedFilterActive || !user || !!profile) &&
     (!ownedFilterActive || ownedIds !== null);
 

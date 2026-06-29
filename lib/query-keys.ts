@@ -1,7 +1,6 @@
 export const QUERY_KEYS = {
   USER: ["user"] as const,
   MARKERS: ["markers"] as const,
-  MARKERS_ENRICHMENT: ["markers_enrichment"] as const,
   OWNED_MARKERS: (userId: string) => ["owned_markers", userId] as const,
   PUB_LIST: "pub_list" as const,
   PLACE: (id: string) => ["place", id] as const,
