@@ -18,11 +18,7 @@ import { analytics } from "@/lib/analytics";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useProfile } from "@/features/profile/api/get-profile";
 import { BeerRating } from "@/components/beer-rating";
-import {
-  PlaceTypeIcon,
-  placeTypeColor,
-  mixedGradient,
-} from "@/features/places/place-type";
+import { PlaceTypeIcon, placeTypeColor } from "@/features/places/place-type";
 import {
   clusterPlaces,
   placesToGeoJSON,
@@ -240,12 +236,8 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
       {clusters.map((item, i) => {
         if (item.type !== "cluster") return null;
         const label = item.count > 99 ? "99+" : `${item.count}`;
-        const isMixed =
-          item.dominantPlaceType === "mixed" && item.topColors.length > 1;
-        const bg = isMixed
-          ? mixedGradient(item.topColors)
-          : placeTypeColor(item.dominantPlaceType);
-        const shadowColor = item.topColors[0];
+        const bg = placeTypeColor(item.dominantPlaceType);
+        const shadowColor = bg;
         const { minLon, minLat, maxLon, maxLat } = item.bounds;
         return (
           <Marker
@@ -278,7 +270,7 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
                   color="white"
                 />
               </div>
-              <div className="absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[10px] font-extrabold font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none p-1">
+              <div className="absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[11px] font-black font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none min-w-[18px] px-1 py-0.5">
                 {label}
               </div>
             </div>

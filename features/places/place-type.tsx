@@ -48,23 +48,7 @@ export function dominantPlaceType(pubs: MapMarker[]): string {
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const top = sorted[0];
   if (!top) return "pub";
-  if (top[1] / pubs.length < 0.6) return "mixed";
   return top[0];
-}
-
-export function topPlaceTypeColors(pubs: MapMarker[], n = 3): string[] {
-  const counts: Record<string, number> = {};
-  for (const p of pubs) {
-    counts[p.place_type] = (counts[p.place_type] ?? 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([pt]) => placeTypeColor(pt));
-}
-
-export function mixedGradient(colors: string[]): string {
-  return `linear-gradient(to right, ${colors.join(", ")})`;
 }
 
 export function PlaceTypeIcon({

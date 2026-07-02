@@ -1,10 +1,6 @@
 import type { MapMarker } from "@/lib/supabase";
 
-import {
-  placeTypeColor,
-  dominantPlaceType,
-  topPlaceTypeColors,
-} from "@/features/places/place-type";
+import { dominantPlaceType } from "@/features/places/place-type";
 
 type PlaceFeatureCollection = {
   type: "FeatureCollection";
@@ -41,7 +37,6 @@ export type ClusterItem =
       lat: number;
       lon: number;
       dominantPlaceType: string;
-      topColors: string[];
       bounds: ClusterBounds;
     };
 
@@ -149,33 +144,23 @@ export function clusterPlaces(
         if (half.places.length === 1) {
           items.push({ type: "place", place: half.places[0] });
         } else {
-          const da = dominantPlaceType(half.places);
           items.push({
             type: "cluster",
             count: half.places.length,
             lat: half.lat,
             lon: half.lon,
-            dominantPlaceType: da,
-            topColors:
-              da === "mixed"
-                ? topPlaceTypeColors(half.places)
-                : [placeTypeColor(da)],
+            dominantPlaceType: dominantPlaceType(half.places),
             bounds: boundsOf(half.places),
           });
         }
       }
     } else {
-      const da = dominantPlaceType(cell.places);
       items.push({
         type: "cluster",
         count: cell.places.length,
         lat: cell.lat,
         lon: cell.lon,
-        dominantPlaceType: da,
-        topColors:
-          da === "mixed"
-            ? topPlaceTypeColors(cell.places)
-            : [placeTypeColor(da)],
+        dominantPlaceType: dominantPlaceType(cell.places),
         bounds: boundsOf(cell.places),
       });
     }
