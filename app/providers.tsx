@@ -8,18 +8,15 @@ import { ThemeProvider } from "next-themes";
 import { GeolocationProvider } from "@/context/geolocation-context";
 import { SearchProvider } from "@/context/search-context";
 import { FilterProvider } from "@/context/filter-context";
+import { PostHogProvider } from "posthog-js/react";
 import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query-keys";
-import { posthog, initPostHog } from "@/lib/posthog";
+import { posthog } from "@/lib/posthog";
 
 function AuthSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Init on mount so pageviews (capture_pageview: "history_change") fire on
-    // every route for all visitors, including anonymous ones.
-    initPostHog();
-
     function invalidateUser() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER });
     }
@@ -35,11 +32,6 @@ function AuthSync() {
         posthog.reset();
       } else if (session?.user) {
         // Tie all events to the real user id and attach person properties.
-        initPostHog();
-        if (process.env.NODE_ENV === "development") {
-          posthog.debug();
-          console.log("[posthog] identify", session.user.id, session.user.email);
-        }
         posthog.identify(session.user.id, {
           email: session.user.email,
           display_name: session.user.user_metadata?.display_name,
@@ -90,17 +82,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
-      <QueryClientProvider client={clientRef.current}>
-        <AuthSync />
-        <GeolocationProvider>
-          <FilterProvider>
-            <SearchProvider>{children}</SearchProvider>
-          </FilterProvider>
-        </GeolocationProvider>
-        <Toaster position="bottom-right" richColors />
-        <ReactQueryDevtools />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <PostHogProvider client={posthog}>
+      <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+        <QueryClientProvider client={clientRef.current}>
+          <AuthSync />
+          <GeolocationProvider>
+            <FilterProvider>
+              <SearchProvider>{children}</SearchProvider>
+            </FilterProvider>
+          </GeolocationProvider>
+          <Toaster position="bottom-right" richColors />
+          <ReactQueryDevtools />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </PostHogProvider>
   );
 }

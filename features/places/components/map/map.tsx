@@ -14,6 +14,7 @@ import Map, {
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { ExpressionSpecification } from "mapbox-gl";
 import { type MapMarker } from "@/lib/supabase";
+import { analytics } from "@/lib/analytics";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useProfile } from "@/features/profile/api/get-profile";
 import { BeerRating } from "@/components/beer-rating";
@@ -91,6 +92,7 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
   );
 
   const onMarkerClick = useCallback((marker: MapMarker) => {
+    analytics.markerClicked(marker);
     setSelectedMarker(marker);
     const map = mapRef.current;
     if (!map) return;

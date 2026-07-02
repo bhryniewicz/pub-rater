@@ -92,7 +92,7 @@ export function PubListItem({ marker, index, onShowOnMap }: Props) {
     >
       {/* Image — full-width on mobile, fixed square on desktop */}
       <div className="relative w-full h-52 bg-secondary md:w-36 md:h-36 md:shrink-0 md:rounded-lg md:overflow-hidden">
-        <Link href={`/places/${marker.id}`} className="block w-full h-full">
+        <Link href={`/places/${marker.id}`} className="relative block w-full h-full">
           {marker.thumbnail ? (
             <Image src={marker.thumbnail} alt={marker.name} fill className="object-cover" />
           ) : (
