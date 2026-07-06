@@ -1,4 +1,12 @@
 import { Suspense } from "react";
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
+import { QUERY_KEYS } from "@/lib/query-keys";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { fetchPlaceTypeCounts } from "@/features/markers/api/get-place-type-counts";
 import HomeContent from "./_components/home-content";
 
 function Spinner() {
@@ -9,10 +17,19 @@ function Spinner() {
   );
 }
 
-export default function Page() {
+export default async function Page() {
+  const queryClient = new QueryClient();
+  await queryClient.prefetchQuery({
+    queryKey: QUERY_KEYS.PLACE_TYPE_COUNTS,
+    queryFn: async () =>
+      fetchPlaceTypeCounts(await createServerSupabaseClient()),
+  });
+
   return (
-    <Suspense fallback={<Spinner />}>
-      <HomeContent />
-    </Suspense>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Suspense fallback={<Spinner />}>
+        <HomeContent />
+      </Suspense>
+    </HydrationBoundary>
   );
 }

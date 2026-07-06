@@ -10,4 +10,8 @@ export const analytics = {
       name: m.name,
       place_type: m.place_type,
     }),
+  categoryFilterClicked: (category: string) =>
+    posthog.capture("category filter clicked", {
+      category,
+    }),
 };

@@ -41,8 +41,8 @@
   "home": {
     "loading": "Ładowanie...",
     "listView": "Lista",
-    "liked": "polubione",
-    "ownedPlaces": "moje miejsca"
+    "liked": "Polubione",
+    "ownedPlaces": "Posiadane"
   },
   "auth": {
     "login": {
@@ -397,6 +397,8 @@
     "mySpots": "📍 Moje miejsca",
     "likedPlaces": "🤍 Polubione",
     "placeType": "Typ miejsca",
+    "showMoreCategories": "Pokaż więcej kategorii",
+    "showLess": "Pokaż mniej",
     "minRating": "Minimalna ocena",
     "ratingAny": "Dowolna",
     "openingHours": "Godziny otwarcia",

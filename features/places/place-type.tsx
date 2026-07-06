@@ -8,16 +8,18 @@ import {
 } from "@/assets/icons";
 import type { MapMarker } from "@/lib/supabase";
 
-const PLACE_TYPE_KEYS = ["pub", "bar", "biergarten"] as const;
+const PLACE_TYPE_KEYS = ["pub", "bar", "biergarten", "sport"] as const;
 export type PlaceType = (typeof PLACE_TYPE_KEYS)[number];
 
 export const PLACE_TYPE_CONFIG = {
   pub: { label: "Pub", color: "#d97706" },
   bar: { label: "Bar", color: "#7c3aed" },
-  biergarten: { label: "Biergarten", color: "#16a34a" },
+  biergarten: { label: "Outdoor", color: "#16a34a" },
+  events: { label: "Events", color: "#f97316" },
+  topRated: { label: "Top rated", color: "#facc15" },
+  sport: { label: "Sport", color: "#16a34a" },
   liked: { label: "Liked", color: "#db2777" },
   owned: { label: "Owned", color: "#1d4ed8" },
-  mixed: { label: "Mixed", color: "#facc15" },
 } as const;
 
 export type PlaceTypeKey = keyof typeof PLACE_TYPE_CONFIG;
@@ -71,7 +73,5 @@ export function PlaceTypeIcon({
       return <HeartIcon size={size} color={color} />;
     case "owned":
       return <HomeIcon size={size} color={color} />;
-    default:
-      return <MixedSolid size={size} color={color} />;
   }
 }

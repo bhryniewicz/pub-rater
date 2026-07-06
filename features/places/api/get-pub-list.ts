@@ -7,7 +7,6 @@ import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useFilters } from "@/context/filter-context";
 import { useSearch } from "@/context/search-context";
-import { useProfile } from "@/features/profile/api/get-profile";
 import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
 import { isOpenNow, isOpenLate } from "@/lib/opening-hours";
@@ -37,7 +36,7 @@ function haversineKm(
 }
 
 export function usePubList() {
-  const { user, loading: userLoading } = useUser();
+  const { user, profile } = useUser();
   const { coords: userLocation } = useGeolocation();
   const { searchQuery, searchSelectedId } = useSearch();
   const {
@@ -56,7 +55,6 @@ export function usePubList() {
     getMarkersQueryOptions(),
   );
 
-  const { data: profile } = useProfile(user?.id, !!user && !userLoading);
   const { data: ownedIds = null } = useOwnedMarkers(
     user?.id,
     !!user && profile?.role === "owner",

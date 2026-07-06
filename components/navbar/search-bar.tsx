@@ -10,7 +10,12 @@ import { useSearch } from "@/context/search-context";
 import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
-import { PlaceTypeIcon, PLACE_TYPE_COLORS } from "@/features/places/place-type";
+import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
+import {
+  PlaceTypeIcon,
+  PLACE_TYPE_COLORS,
+  PLACE_TYPE_LABELS,
+} from "@/features/places/place-type";
 import {
   Command,
   CommandList,
@@ -40,11 +45,20 @@ export function SearchBar() {
   const [debouncedInput, setDebouncedInput] = useState("");
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<
+    Record<string, boolean>
+  >({});
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
+  function toggleSection(key: string) {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   // Pending (staged) filter state — only applied when "Show places" is clicked
   const [pendingCategoryFilter, setPendingCategoryFilter] = useState<string[]>([]);
   const [pendingFilterActive, setPendingFilterActive] = useState(false);
   const [pendingLikedFilterActive, setPendingLikedFilterActive] = useState(false);
+  const [pendingOwnedFilterActive, setPendingOwnedFilterActive] = useState(false);
   const [pendingOpenFilterActive, setPendingOpenFilterActive] = useState(false);
   const [pendingOpenLateFilterActive, setPendingOpenLateFilterActive] = useState(false);
   const [pendingMinRatingFilter, setPendingMinRatingFilter] = useState<number | null>(null);
@@ -60,6 +74,8 @@ export function SearchBar() {
     setFilterActive,
     likedFilterActive,
     setLikedFilterActive,
+    ownedFilterActive,
+    setOwnedFilterActive,
     openFilterActive,
     setOpenFilterActive,
     openLateFilterActive,
@@ -72,7 +88,11 @@ export function SearchBar() {
     setRadiusFilter,
   } = useFilters();
   const { status: geoStatus, coords: geoCoords, enable: enableGeo } = useGeolocation();
-  const { user } = useUser();
+  const { user, profile } = useUser();
+  const { data: ownedIds = null } = useOwnedMarkers(
+    user?.id,
+    !!user && profile?.role === "owner",
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const justSelected = useRef(false);
 
@@ -82,6 +102,7 @@ export function SearchBar() {
       setPendingCategoryFilter(categoryFilter);
       setPendingFilterActive(filterActive);
       setPendingLikedFilterActive(likedFilterActive);
+      setPendingOwnedFilterActive(ownedFilterActive);
       setPendingOpenFilterActive(openFilterActive);
       setPendingOpenLateFilterActive(openLateFilterActive);
       setPendingMinRatingFilter(minRatingFilter);
@@ -126,6 +147,34 @@ export function SearchBar() {
 
   const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
 
+  const categoryItems: { type: string; count: number }[] = [
+    ...sortedCategories.map(([type, count]) => ({ type, count })),
+  ];
+  if (user && (profile?.liked_places.length ?? 0) > 0) {
+    categoryItems.push({ type: "liked", count: profile!.liked_places.length });
+  }
+  if (profile?.role === "owner" && (ownedIds?.length ?? 0) > 0) {
+    categoryItems.push({ type: "owned", count: ownedIds!.length });
+  }
+
+  function toggleCategory(type: string) {
+    if (type === "liked") {
+      setPendingLikedFilterActive((v) => !v);
+    } else if (type === "owned") {
+      setPendingOwnedFilterActive((v) => !v);
+    } else {
+      setPendingCategoryFilter((prev) =>
+        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+      );
+    }
+  }
+
+  function isCategoryActive(type: string) {
+    if (type === "liked") return pendingLikedFilterActive;
+    if (type === "owned") return pendingOwnedFilterActive;
+    return pendingCategoryFilter.includes(type);
+  }
+
   function handleSelect(marker: MapMarker) {
     justSelected.current = true;
     setSearchSelectedId(marker.id);
@@ -149,6 +198,7 @@ export function SearchBar() {
   function clearPendingFilters() {
     setPendingFilterActive(false);
     setPendingLikedFilterActive(false);
+    setPendingOwnedFilterActive(false);
     setPendingCategoryFilter([]);
     setPendingMinRatingFilter(null);
     setPendingOpenFilterActive(false);
@@ -161,6 +211,7 @@ export function SearchBar() {
     setCategoryFilter(pendingCategoryFilter);
     setFilterActive(pendingFilterActive);
     setLikedFilterActive(pendingLikedFilterActive);
+    setOwnedFilterActive(pendingOwnedFilterActive);
     setOpenFilterActive(pendingOpenFilterActive);
     setOpenLateFilterActive(pendingOpenLateFilterActive);
     setMinRatingFilter(pendingMinRatingFilter);
@@ -187,6 +238,7 @@ export function SearchBar() {
   const hasActiveFilters =
     filterActive ||
     likedFilterActive ||
+    ownedFilterActive ||
     !!voivodeshipFilter ||
     categoryFilter.length > 0 ||
     radiusFilter !== null ||
@@ -314,85 +366,85 @@ export function SearchBar() {
       >
         <div className="px-4 py-5 flex flex-col gap-7">
 
-                {/* My spots + Liked places */}
-                {user && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPendingFilterActive((v) => !v)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2.5 rounded-xl border transition-colors ${
-                        pendingFilterActive
-                          ? "bg-secondary border-foreground/20 text-foreground"
-                          : "border-border text-muted-foreground hover:border-foreground/20"
-                      }`}
-                    >
-                      <span>📍</span> {t("mySpots")}
-                    </button>
-                    <button
-                      onClick={() => setPendingLikedFilterActive((v) => !v)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2.5 rounded-xl border transition-colors ${
-                        pendingLikedFilterActive
-                          ? "bg-secondary border-foreground/20 text-foreground"
-                          : "border-border text-muted-foreground hover:border-foreground/20"
-                      }`}
-                    >
-                      <span>🤍</span> {t("likedPlaces")}
-                    </button>
-                  </div>
-                )}
-
                 {/* Place type — mobile only */}
-                {sortedCategories.length > 0 && (
+                {categoryItems.length > 0 && (
                   <div className="md:hidden">
-                    <div className="flex items-center justify-between mb-3">
+                    <button
+                      onClick={() => toggleSection("placeType")}
+                      className="flex w-full items-center justify-between mb-3"
+                    >
                       <span className="font-bold text-foreground text-sm">{t("placeType")}</span>
-                      <LuChevronUp size={16} className="text-muted-foreground" />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {sortedCategories.map(([type, count]) => {
-                        const active = pendingCategoryFilter.includes(type);
-                        return (
+                      <LuChevronUp
+                        size={16}
+                        className={`text-muted-foreground transition-transform ${
+                          collapsedSections.placeType ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {!collapsedSections.placeType && (
+                      <div className="flex flex-col gap-2">
+                        {(showAllCategories
+                          ? categoryItems
+                          : categoryItems.slice(0, 4)
+                        ).map(({ type, count }) => {
+                          const active = isCategoryActive(type);
+                          return (
+                            <button
+                              key={type}
+                              onClick={() => toggleCategory(type)}
+                              className={`flex items-center gap-3 py-1.5 text-sm transition-colors ${
+                                active ? "font-semibold" : "font-medium"
+                              }`}
+                            >
+                              <span
+                                style={{ background: PLACE_TYPE_COLORS[type] }}
+                                className="flex items-center justify-center w-9 h-9 rounded-lg text-white shrink-0"
+                              >
+                                <PlaceTypeIcon
+                                  placeType={type}
+                                  size={18}
+                                  color="#fff"
+                                />
+                              </span>
+                              <span className="flex-1 text-left text-foreground">
+                                {PLACE_TYPE_LABELS[type] ?? type}
+                              </span>
+                              <span className="text-muted-foreground text-xs font-bold">
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {categoryItems.length > 4 && (
                           <button
-                            key={type}
-                            onClick={() =>
-                              setPendingCategoryFilter((prev) =>
-                                prev.includes(type)
-                                  ? prev.filter((t) => t !== type)
-                                  : [...prev, type],
-                              )
-                            }
-                            className={`flex items-center gap-3 px-3 py-3 rounded-xl border text-sm font-medium transition-colors ${
-                              active
-                                ? "bg-secondary border-foreground/20 text-foreground"
-                                : "border-border text-muted-foreground hover:border-foreground/20"
-                            }`}
-                            style={
-                              active
-                                ? { borderColor: PLACE_TYPE_COLORS[type] + "60" }
-                                : undefined
-                            }
+                            onClick={() => setShowAllCategories((v) => !v)}
+                            className="self-start px-1 py-1 text-sm font-semibold text-primary hover:underline"
                           >
-                            <span className="shrink-0">
-                              <PlaceTypeIcon placeType={type} size={16} />
-                            </span>
-                            <span className="flex-1 text-left capitalize text-foreground">
-                              {type}
-                            </span>
-                            <span className="text-muted-foreground text-xs font-bold">
-                              {count}
-                            </span>
+                            {showAllCategories
+                              ? t("showLess")
+                              : t("showMoreCategories")}
                           </button>
-                        );
-                      })}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Minimum rating */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={() => toggleSection("minRating")}
+                    className="flex w-full items-center justify-between mb-3"
+                  >
                     <span className="font-bold text-foreground text-sm">{t("minRating")}</span>
-                    <LuChevronUp size={16} className="text-muted-foreground" />
-                  </div>
+                    <LuChevronUp
+                      size={16}
+                      className={`text-muted-foreground transition-transform ${
+                        collapsedSections.minRating ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {!collapsedSections.minRating && (
                   <div className="flex flex-wrap gap-2">
                     {RATING_OPTIONS.map(({ label, value }) => (
                       <button
@@ -408,14 +460,24 @@ export function SearchBar() {
                       </button>
                     ))}
                   </div>
+                  )}
                 </div>
 
                 {/* Opening hours */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={() => toggleSection("openingHours")}
+                    className="flex w-full items-center justify-between mb-3"
+                  >
                     <span className="font-bold text-foreground text-sm">{t("openingHours")}</span>
-                    <LuChevronUp size={16} className="text-muted-foreground" />
-                  </div>
+                    <LuChevronUp
+                      size={16}
+                      className={`text-muted-foreground transition-transform ${
+                        collapsedSections.openingHours ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {!collapsedSections.openingHours && (
                   <div className="flex flex-col gap-2">
                     <div
                       className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
@@ -464,14 +526,24 @@ export function SearchBar() {
                       />
                     </div>
                   </div>
+                  )}
                 </div>
 
                 {/* Location */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={() => toggleSection("location")}
+                    className="flex w-full items-center justify-between mb-3"
+                  >
                     <span className="font-bold text-foreground text-sm">{t("location")}</span>
-                    <LuChevronUp size={16} className="text-muted-foreground" />
-                  </div>
+                    <LuChevronUp
+                      size={16}
+                      className={`text-muted-foreground transition-transform ${
+                        collapsedSections.location ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {!collapsedSections.location && (
                   <div className="flex flex-col gap-3">
                     <select
                       value={pendingVoivodeshipFilter ?? ""}
@@ -521,6 +593,7 @@ export function SearchBar() {
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
         </div>
       </Drawer>

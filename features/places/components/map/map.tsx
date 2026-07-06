@@ -16,7 +16,7 @@ import type { ExpressionSpecification } from "mapbox-gl";
 import { type MapMarker } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
 import { useGeolocation } from "@/context/geolocation-context";
-import { useProfile } from "@/features/profile/api/get-profile";
+import { useUser } from "@/features/profile/api/get-user";
 import { BeerRating } from "@/components/beer-rating";
 import { PlaceTypeIcon, placeTypeColor } from "@/features/places/place-type";
 import {
@@ -46,7 +46,7 @@ interface Props {
 export default function MapComponent({ markers, focusedMarker }: Props) {
   const { resolvedTheme } = useTheme();
   const { coords: userLocation } = useGeolocation();
-  const { data: profile } = useProfile();
+  const { profile } = useUser();
 
   const mapRef = useRef<MapRef>(null);
   const iconImages = useRef<PlaceIconImages | null>(null);

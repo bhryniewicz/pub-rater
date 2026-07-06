@@ -3,7 +3,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/features/profile/api/get-user";
-import { useProfile } from "@/features/profile/api/get-profile";
 import { QUERY_KEYS } from "@/lib/query-keys";
 import type { UserData } from "@/features/profile/api/get-user";
 import type { MutationConfig } from "@/lib/react-query";
@@ -13,9 +12,8 @@ type UseLikePlaceOptions = {
 };
 
 export function useLikePlace({ mutationConfig }: UseLikePlaceOptions = {}) {
-  const { user } = useUser();
+  const { user, profile } = useUser();
   const queryClient = useQueryClient();
-  const { data: profile } = useProfile();
 
   const likedPlaces = profile?.liked_places ?? [];
   const { onSuccess, ...restConfig } = mutationConfig || {};

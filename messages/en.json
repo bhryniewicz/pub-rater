@@ -41,8 +41,8 @@
   "home": {
     "loading": "Loading...",
     "listView": "List view",
-    "liked": "liked",
-    "ownedPlaces": "owned places"
+    "liked": "Liked",
+    "ownedPlaces": "Owned"
   },
   "auth": {
     "login": {
@@ -397,6 +397,8 @@
     "mySpots": "📍 My spots",
     "likedPlaces": "🤍 Liked places",
     "placeType": "Place type",
+    "showMoreCategories": "Show more categories",
+    "showLess": "Show less",
     "minRating": "Minimum rating",
     "ratingAny": "Any",
     "openingHours": "Opening hours",

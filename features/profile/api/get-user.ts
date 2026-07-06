@@ -39,7 +39,7 @@ export async function fetchUser(): Promise<UserData> {
   }
 }
 
-export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean; isOwner: boolean } {
+export function useUser(): { user: User | null; loading: boolean; isAdmin: boolean; isOwner: boolean; profile: UserProfile | null } {
   const { data, isLoading } = useQuery({
     queryKey: QUERY_KEYS.USER,
     queryFn: fetchUser,
@@ -51,5 +51,6 @@ export function useUser(): { user: User | null; loading: boolean; isAdmin: boole
     loading: isLoading,
     isAdmin: data?.isAdmin ?? false,
     isOwner: data?.isOwner ?? false,
+    profile: data?.profile ?? null,
   }
 }
