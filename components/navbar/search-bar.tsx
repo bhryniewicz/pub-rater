@@ -5,17 +5,13 @@ import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import type { MapMarker } from "@/lib/supabase";
 import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
-import { QUERY_KEYS } from "@/lib/query-keys";
 import { useSearch } from "@/context/search-context";
 import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
-import {
-  PlaceTypeIcon,
-  PLACE_TYPE_COLORS,
-  PLACE_TYPE_LABELS,
-} from "@/features/places/place-type";
+import { PlaceTypeIcon } from "@/features/places/place-type";
+import { AmenityFilters } from "@/features/places/components/amenity-filter-bar";
 import {
   Command,
   CommandList,
@@ -159,21 +155,25 @@ export function SearchBar() {
 
   function toggleCategory(type: string) {
     if (type === "liked") {
+      setPendingCategoryFilter([]);
+      setPendingOwnedFilterActive(false);
       setPendingLikedFilterActive((v) => !v);
     } else if (type === "owned") {
+      setPendingCategoryFilter([]);
+      setPendingLikedFilterActive(false);
       setPendingOwnedFilterActive((v) => !v);
     } else {
-      setPendingCategoryFilter((prev) =>
-        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-      );
+      setPendingLikedFilterActive(false);
+      setPendingOwnedFilterActive(false);
+      setPendingCategoryFilter((prev) => (!prev.includes(type) ? [type] : []));
     }
   }
 
-  function isCategoryActive(type: string) {
-    if (type === "liked") return pendingLikedFilterActive;
-    if (type === "owned") return pendingOwnedFilterActive;
-    return pendingCategoryFilter.includes(type);
-  }
+  const pendingActiveTypes = [
+    ...pendingCategoryFilter,
+    ...(pendingLikedFilterActive ? ["liked"] : []),
+    ...(pendingOwnedFilterActive ? ["owned"] : []),
+  ];
 
   function handleSelect(marker: MapMarker) {
     justSelected.current = true;
@@ -383,38 +383,16 @@ export function SearchBar() {
                     </button>
                     {!collapsedSections.placeType && (
                       <div className="flex flex-col gap-2">
-                        {(showAllCategories
-                          ? categoryItems
-                          : categoryItems.slice(0, 4)
-                        ).map(({ type, count }) => {
-                          const active = isCategoryActive(type);
-                          return (
-                            <button
-                              key={type}
-                              onClick={() => toggleCategory(type)}
-                              className={`flex items-center gap-3 py-1.5 text-sm transition-colors ${
-                                active ? "font-semibold" : "font-medium"
-                              }`}
-                            >
-                              <span
-                                style={{ background: PLACE_TYPE_COLORS[type] }}
-                                className="flex items-center justify-center w-9 h-9 rounded-lg text-white shrink-0"
-                              >
-                                <PlaceTypeIcon
-                                  placeType={type}
-                                  size={18}
-                                  color="#fff"
-                                />
-                              </span>
-                              <span className="flex-1 text-left text-foreground">
-                                {PLACE_TYPE_LABELS[type] ?? type}
-                              </span>
-                              <span className="text-muted-foreground text-xs font-bold">
-                                {count}
-                              </span>
-                            </button>
-                          );
-                        })}
+                        <AmenityFilters
+                          variant="list"
+                          items={
+                            showAllCategories
+                              ? categoryItems
+                              : categoryItems.slice(0, 4)
+                          }
+                          activeTypes={pendingActiveTypes}
+                          onToggle={toggleCategory}
+                        />
                         {categoryItems.length > 4 && (
                           <button
                             onClick={() => setShowAllCategories((v) => !v)}

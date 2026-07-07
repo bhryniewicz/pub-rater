@@ -18,6 +18,7 @@ import { analytics } from "@/lib/analytics";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
 import { BeerRating } from "@/components/beer-rating";
+import { CountBadge } from "@/components/ui/count-badge";
 import { PlaceTypeIcon, placeTypeColor } from "@/features/places/place-type";
 import {
   clusterPlaces,
@@ -270,9 +271,9 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
                   color="white"
                 />
               </div>
-              <div className="absolute -top-[6px] -right-[14px] bg-gray-700 text-white rounded-md flex items-center justify-center text-[11px] font-black font-sans border border-white shadow-[0_1px_5px_rgba(0,0,0,0.3)] leading-none min-w-[18px] px-1 py-0.5">
+              <CountBadge className="absolute -top-[6px] -right-[14px]">
                 {label}
-              </div>
+              </CountBadge>
             </div>
           </Marker>
         );

@@ -42,6 +42,22 @@ export function placeTypeColor(placeType: string): string {
   return PLACE_TYPE_COLORS[placeType] ?? "#4b5563";
 }
 
+function lightenColor(hex: string, amount: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  const to2 = (n: number) => mix(n).toString(16).padStart(2, "0");
+  return `#${to2(r)}${to2(g)}${to2(b)}`;
+}
+
+export function placeTypeGradient(placeType: string): string {
+  const base = placeTypeColor(placeType);
+  const light = lightenColor(base, 0.4);
+  return `linear-gradient(to bottom right, ${base} 30%, ${light} 70%)`;
+}
+
 export function dominantPlaceType(pubs: MapMarker[]): string {
   const counts: Record<string, number> = {};
   for (const p of pubs) {
