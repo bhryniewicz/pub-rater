@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import type { MapMarker } from "@/lib/supabase";
@@ -10,7 +12,8 @@ import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
-import { PlaceTypeIcon } from "@/features/places/place-type";
+import { PlaceTypeIcon, placeTypeGradient } from "@/features/places/place-type";
+import { analytics } from "@/lib/analytics";
 import { AmenityFilters } from "@/features/places/components/amenity-filter-bar";
 import {
   Command,
@@ -38,7 +41,7 @@ export function SearchBar() {
     { label: "4.5 ★ +", value: 4.5 },
   ];
   const [input, setInput] = useState("");
-  const [debouncedInput, setDebouncedInput] = useState("");
+  const [debouncedInput] = useDebounce(input, 500);
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<
@@ -89,8 +92,8 @@ export function SearchBar() {
     user?.id,
     !!user && profile?.role === "owner",
   );
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
-  const justSelected = useRef(false);
 
   // Sync pending state from applied context when panel opens
   useEffect(() => {
@@ -109,15 +112,6 @@ export function SearchBar() {
   }, [filtersOpen]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedInput(input), 300);
-    return () => clearTimeout(t);
-  }, [input]);
-
-  useEffect(() => {
-    if (justSelected.current) {
-      justSelected.current = false;
-      return;
-    }
     setOpen(debouncedInput.length > 0 && !filtersOpen);
   }, [debouncedInput, filtersOpen]);
 
@@ -175,15 +169,33 @@ export function SearchBar() {
     ...(pendingOwnedFilterActive ? ["owned"] : []),
   ];
 
+  function normalizedQuery() {
+    return debouncedInput.trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
   function handleSelect(marker: MapMarker) {
-    justSelected.current = true;
-    setSearchSelectedId(marker.id);
-    setSearchQuery("");
-    setInput(marker.name);
+    analytics.searchPerformed({
+      query: normalizedQuery(),
+      mode: "select",
+      result_count: suggestions.length,
+      matched_place_id: marker.id,
+      matched_place_name: marker.name,
+      matched_place_type: marker.place_type,
+    });
     setOpen(false);
+    router.push(`/places/${marker.id}`);
   }
 
   function handleSearchAll() {
+    const top = suggestions[0];
+    analytics.searchPerformed({
+      query: normalizedQuery(),
+      mode: "submit",
+      result_count: suggestions.length,
+      matched_place_id: top?.id,
+      matched_place_name: top?.name,
+      matched_place_type: top?.place_type,
+    });
     setSearchQuery(debouncedInput.trim());
     setSearchSelectedId(null);
     setOpen(false);
@@ -312,25 +324,27 @@ export function SearchBar() {
                       key={marker.id}
                       value={marker.id}
                       onSelect={() => handleSelect(marker)}
-                      className="flex items-center gap-2.5 px-3 py-2 cursor-pointer"
+                      className="flex items-center gap-3 px-3 py-2 cursor-pointer"
                     >
-                      <span className="shrink-0">
-                        <PlaceTypeIcon placeType={marker.place_type} size={16} />
+                      <span
+                        style={{ background: placeTypeGradient(marker.place_type) }}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 text-white"
+                      >
+                        <PlaceTypeIcon
+                          placeType={marker.place_type}
+                          size={16}
+                          color="currentColor"
+                        />
                       </span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm text-foreground truncate">
-                          {marker.name}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          {marker.place_type}
-                        </span>
-                      </div>
+                      <span className="text-sm text-foreground truncate min-w-0">
+                        {marker.name}
+                      </span>
                     </CommandItem>
                   ))}
                   <CommandItem
                     value="__search_all__"
                     onSelect={handleSearchAll}
-                    className="border-t border-border text-muted-foreground text-xs px-3 py-2.5 cursor-pointer"
+                    className="mt-2 border-t border-border text-muted-foreground text-xs px-3 py-2.5 cursor-pointer"
                   >
                     <LuSearch className="w-3.5 h-3.5 shrink-0" />
                     {t("showAllResults", { query: debouncedInput })}

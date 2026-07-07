@@ -7,7 +7,7 @@ function CountBadge({ className, ...props }: React.ComponentProps<"span">) {
     <span
       data-slot="count-badge"
       className={cn(
-        "flex items-center justify-center min-w-[18px] px-1 py-0.5 rounded-md border border-white bg-gray-700 text-white text-[11px] font-black font-sans leading-none shadow-[0_1px_5px_rgba(0,0,0,0.3)]",
+        "flex items-center justify-center min-w-[18px] px-1 py-0.5 rounded-md bg-gray-700 text-white text-[11px] font-black font-sans leading-none shadow-[0_1px_5px_rgba(0,0,0,0.3)]",
         className,
       )}
       {...props}

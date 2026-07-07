@@ -85,7 +85,7 @@ export function AmenityFilters({
               }`}
             >
               <PlaceTypeIcon placeType={type} size={20} color="currentColor" />
-              <CountBadge className="absolute -top-1.5 -right-4">
+              <CountBadge className="absolute -top-1.5 -right-2">
                 {count}
               </CountBadge>
             </div>

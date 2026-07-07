@@ -271,7 +271,7 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
                   color="white"
                 />
               </div>
-              <CountBadge className="absolute -top-[6px] -right-[14px]">
+              <CountBadge className="absolute -top-[6px] -right-[14px] border border-white">
                 {label}
               </CountBadge>
             </div>

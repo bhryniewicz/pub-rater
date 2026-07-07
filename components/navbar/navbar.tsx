@@ -13,6 +13,7 @@ import { SearchBar } from "./search-bar";
 import { AddPlaceDialog } from "@/features/places/components/add-place-dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { supabase } from "@/lib/supabase";
+import { analytics } from "@/lib/analytics";
 import {
   LuUser,
   LuBuilding2,
@@ -25,7 +26,9 @@ import {
   LuLogOut,
   LuUserPlus,
   LuHouse,
+  LuBell,
 } from "react-icons/lu";
+import { CountBadge } from "@/components/ui/count-badge";
 import { motion } from "framer-motion";
 
 type NavbarProps = {
@@ -51,6 +54,8 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
   const [mounted, setMounted] = useState(false);
   const [addPlaceOpen, setAddPlaceOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Placeholder — no persistent unread-notification count exists yet.
+  const notificationCount = 3;
 
   useEffect(() => setMounted(true), []);
 
@@ -208,15 +213,19 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
 
   return (
     <>
-      <header className="px-4 md:px-12 bg-background shrink-0">
-        <div className="flex items-center gap-2 pt-6 pb-4 relative">
+      <header className="relative z-50 px-4 md:px-12 bg-background shrink-0">
+        <div className="flex items-center gap-2 py-6 relative">
           <div className="h-12 flex items-center shrink-0">
-            <Link href="/" aria-label="Pub Rater">
+            <Link
+              href="/"
+              aria-label="Pub Rater"
+              onClick={() => analytics.logoClicked(pathname)}
+            >
               <Image
                 src={
                   mounted && resolvedTheme === "dark"
-                    ? "/pub-rater-dark.png"
-                    : "/pub-rater-light.png"
+                    ? "/ocenpub-logo-dark.png"
+                    : "/ocenpub-logo-light.png"
                 }
                 alt="Pub Rater"
                 height={80}
@@ -239,13 +248,30 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
           {/* Right controls */}
           <div className="flex items-center gap-2 ml-auto">
             {/* Add Place — desktop bar only */}
-            {user && (!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
-              <button
-                onClick={() => setAddPlaceOpen(true)}
-                className="hidden md:inline-flex h-11 items-center text-sm font-medium text-muted-foreground border border-border rounded-lg px-3 hover:text-foreground hover:border-foreground/40 transition-colors"
+            {user &&
+              (!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
+                <button
+                  onClick={() => setAddPlaceOpen(true)}
+                  className="hidden md:inline-flex h-11 items-center text-sm font-medium text-muted-foreground border border-border rounded-lg px-3 hover:text-foreground hover:border-foreground/40 transition-colors"
+                >
+                  {t("addPlace")}
+                </button>
+              )}
+
+            {/* Notifications — all screen sizes */}
+            {user && (
+              <motion.button
+                aria-label={t("notifications")}
+                whileTap={{ scale: 0.88 }}
+                className="relative h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
               >
-                {t("addPlace")}
-              </button>
+                <LuBell size={20} />
+                {notificationCount > 0 && (
+                  <CountBadge className="absolute -top-1.5 -right-1.5 bg-red-500">
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </CountBadge>
+                )}
+              </motion.button>
             )}
 
             {/* Hamburger — all screen sizes */}

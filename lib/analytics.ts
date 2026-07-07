@@ -14,4 +14,16 @@ export const analytics = {
     posthog.capture("category filter clicked", {
       category,
     }),
+  logoClicked: (path: string) =>
+    posthog.capture("logo clicked", {
+      path,
+    }),
+  searchPerformed: (p: {
+    query: string;
+    mode: "select" | "submit";
+    result_count: number;
+    matched_place_id?: string;
+    matched_place_name?: string;
+    matched_place_type?: string;
+  }) => posthog.capture("search performed", p),
 };
