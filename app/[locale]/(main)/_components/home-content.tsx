@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { usePubList } from "@/features/places/api/get-pub-list";
+import { useMarkers } from "@/features/markers/api/get-markers";
 import { PubList } from "@/features/places/components/pub-list/pub-list";
 import { AgeGate } from "@/components/age-gate";
 import { useUser } from "@/features/profile/api/get-user";
@@ -42,6 +43,9 @@ export default function HomeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const markers = useMarkers();
+  const { filteredMarkers } = markers;
+
   const {
     data: pubListPages,
     isLoading: listLoading,
@@ -49,8 +53,7 @@ export default function HomeContent() {
     fetchNextPage,
     hasNextPage,
     enabled: pubListEnabled,
-    filteredMarkers,
-  } = usePubList();
+  } = usePubList(markers);
 
   const pubList = useMemo(
     () => pubListPages?.pages.flatMap((p) => p.items) ?? [],
@@ -76,11 +79,10 @@ export default function HomeContent() {
             places={pubList}
             totalCount={pubListPages?.pages[0]?.totalCount ?? 0}
             isLoading={!pubListEnabled || listLoading}
-            onShowOnMap={(coords) => {
-              setFocusedMarker(coords);
+            onShowMap={(coords) => {
+              if (coords) setFocusedMarker(coords);
               setMobileView("map");
             }}
-            onShowMap={() => setMobileView("map")}
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
@@ -92,13 +94,13 @@ export default function HomeContent() {
           <div className="relative w-full h-full md:rounded-2xl overflow-hidden">
             <button
               onClick={() => setMobileView("list")}
-              className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm text-foreground rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg border border-border"
+              className="md:hidden absolute top-4 left-4 z-10 flex items-center gap-1.5 h-7 px-3 bg-secondary text-muted-foreground rounded-full text-xs font-medium shadow-lg border border-border"
             >
-              <LuArrowLeft size={16} />
+              <LuArrowLeft size={14} />
               {t("listView")}
             </button>
             <div className="md:hidden absolute top-4 right-4 z-10 shadow-lg">
-              <OpenToggle className="bg-background/90 backdrop-blur-sm border-border/80" />
+              <OpenToggle />
             </div>
             <Map markers={filteredMarkers} focusedMarker={focusedMarker} />
           </div>

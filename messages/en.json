@@ -159,6 +159,10 @@
     "noComments": "No comments yet. Be the first!",
     "loadMore": "Load more comments ↓",
     "whatRatersTick": "What Raters Tick",
+    "amenitiesLabel": "Amenities",
+    "amenityOtherLabel": "Other",
+    "amenityOtherPlaceholder": "e.g. Pool table",
+    "ratersAgree": "{count} agree",
     "atmosphere": "Atmosphere",
     "service": "Service",
     "theSpace": "The Space",
@@ -414,10 +418,13 @@
     "showPlaces": "Show places"
   },
   "pubList": {
-    "availableLabel": "Available venues",
-    "availableCount": "— {count} venues",
+    "availableLabel": "Available venues - ",
+    "availableCount": "{count} venues",
     "map": "Map",
     "mark": "Mark",
+    "showOnMap": "Show on map",
+    "like": "Like",
+    "unlike": "Unlike",
     "openUntil": "Open until {time}",
     "openStatus": "Open",
     "closedStatus": "Closed",
@@ -426,7 +433,8 @@
     "loading": "Loading...",
     "loadingMore": "Loading more...",
     "allLoaded": "All places loaded",
-    "until": "until {time}"
+    "until": "until {time}",
+    "validated": "Validated"
   },
   "addPlace": {
     "title": "SUGGEST A PLACE",

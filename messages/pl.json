@@ -159,6 +159,10 @@
     "noComments": "Brak komentarzy. Bądź pierwszy!",
     "loadMore": "Załaduj więcej ↓",
     "whatRatersTick": "Co oceniający zaznaczyli",
+    "amenitiesLabel": "Udogodnienia",
+    "amenityOtherLabel": "Inne",
+    "amenityOtherPlaceholder": "np. Stół bilardowy",
+    "ratersAgree": "{count} potwierdza",
     "atmosphere": "Atmosfera",
     "service": "Obsługa",
     "theSpace": "Przestrzeń",
@@ -418,6 +422,9 @@
     "availableCount": "— {count} lokali",
     "map": "Mapa",
     "mark": "Oznacz",
+    "showOnMap": "Pokaż na mapie",
+    "like": "Polub",
+    "unlike": "Cofnij polubienie",
     "openUntil": "Otwarte do {time}",
     "openStatus": "Otwarte",
     "closedStatus": "Zamknięte",
@@ -426,7 +433,8 @@
     "loading": "Ładowanie...",
     "loadingMore": "Ładowanie więcej...",
     "allLoaded": "Wszystkie miejsca załadowane",
-    "until": "do {time}"
+    "until": "do {time}",
+    "validated": "Zweryfikowano"
   },
   "addPlace": {
     "title": "ZAPROPONUJ MIEJSCE",

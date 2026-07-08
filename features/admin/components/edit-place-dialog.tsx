@@ -5,7 +5,12 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EditPlaceSchema, type EditPlaceValues } from "@/features/places/schemas";
+import { EditPlaceSchema, type EditPlaceValues, type AmenityKey } from "@/features/places/schemas";
+import {
+  AMENITY_KEYS,
+  AMENITY_CONFIG,
+  AMENITY_OTHER_MAX,
+} from "@/features/places/amenities";
 import type { Place } from "@/lib/supabase";
 import { useUpdatePlace } from "@/features/places/api/update-place";
 import { Input } from "@/components/ui/input";
@@ -49,6 +54,7 @@ export function EditPlaceDialog({
 }: Props) {
   const t = useTranslations("places");
   const tCommon = useTranslations("common");
+  const tGC = useTranslations("guestCheck");
   const [dayStates, setDayStates] = useState<Record<Day, DayState>>(() =>
     hoursToState(place?.opening_hours ?? null)
   );
@@ -64,6 +70,8 @@ export function EditPlaceDialog({
       website: place?.website ?? null,
       opening_hours: place?.opening_hours ?? null,
       thumbnail: place?.thumbnail ?? null,
+      amenities: (place?.amenities ?? []) as AmenityKey[],
+      amenity_other: place?.amenity_other ?? null,
     },
   });
 
@@ -206,6 +214,66 @@ export function EditPlaceDialog({
                   <Input
                     placeholder="https://..."
                     className="h-9"
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="amenities"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("amenitiesLabel")}</FormLabel>
+                <FormControl>
+                  <div className="grid grid-cols-2 gap-2">
+                    {AMENITY_KEYS.map((key) => {
+                      const { labelKey, Icon } = AMENITY_CONFIG[key];
+                      const checked = field.value.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() =>
+                            field.onChange(
+                              checked
+                                ? field.value.filter((k) => k !== key)
+                                : [...field.value, key],
+                            )
+                          }
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors ${
+                            checked
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="capitalize">{tGC(labelKey).toLowerCase()}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="amenity_other"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("amenityOtherLabel")}</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder={t("amenityOtherPlaceholder")}
+                    className="h-9"
+                    maxLength={AMENITY_OTHER_MAX}
                     value={field.value ?? ""}
                     onChange={(e) => field.onChange(e.target.value || null)}
                   />

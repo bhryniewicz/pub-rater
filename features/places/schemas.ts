@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+export const AMENITY_KEYS = [
+  'outdoor_seating',
+  'smoking_area',
+  'great_beer_selection',
+  'lots_of_beers_on_tap',
+  'serves_food',
+  'live_music',
+  'dog_friendly',
+] as const
+
+export type AmenityKey = typeof AMENITY_KEYS[number]
+
+export const AMENITY_OTHER_MAX = 20
+
 export const DayHoursSchema = z.object({
   open: z.string(),
   close: z.string().nullable(),
@@ -41,6 +55,10 @@ export const PubListItemSchema = z.object({
   app_rating: z.number().nullable(),
   app_review_count: z.number().nullable(),
   opening_hours: OpeningHoursSchema.nullable(),
+  amenities: z.array(z.string()).default([]),
+  amenity_other: z.string().nullable(),
+  price_tier: z.number().nullable(),
+  rating_score: z.number().nullable(),
 })
 
 export const PlaceSchema = z.object({
@@ -59,6 +77,8 @@ export const PlaceSchema = z.object({
   thumbnail: z.string().nullable(),
   app_reviews: z.array(z.string()).nullable(),
   short_code: z.string(),
+  amenities: z.array(z.string()).default([]),
+  amenity_other: z.string().nullable(),
 })
 
 export const ReviewSchema = z.object({
@@ -106,6 +126,12 @@ export const EditPlaceSchema = z.object({
   website: z.string().trim().nullable(),
   opening_hours: OpeningHoursSchema.nullable(),
   thumbnail: z.string().trim().nullable(),
+  amenities: z.array(z.enum(AMENITY_KEYS)),
+  amenity_other: z
+    .string()
+    .trim()
+    .max(AMENITY_OTHER_MAX, `Max ${AMENITY_OTHER_MAX} characters`)
+    .nullable(),
 })
 
 export type DayHours = z.infer<typeof DayHoursSchema>

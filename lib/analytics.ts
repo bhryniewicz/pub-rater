@@ -26,4 +26,28 @@ export const analytics = {
     matched_place_name?: string;
     matched_place_type?: string;
   }) => posthog.capture("search performed", p),
+  mapButtonClicked: (m: { id: string; name: string; place_type: string }) =>
+    posthog.capture("map button clicked", {
+      marker_id: m.id,
+      name: m.name,
+      place_type: m.place_type,
+    }),
+  pubCardOpened: (m: { id: string; name: string; place_type: string }) =>
+    posthog.capture("pub card opened", {
+      marker_id: m.id,
+      name: m.name,
+      place_type: m.place_type,
+    }),
+  pubCardLikeToggled: (m: {
+    id: string;
+    name: string;
+    place_type: string;
+    liked: boolean;
+  }) =>
+    posthog.capture("pub card like toggled", {
+      marker_id: m.id,
+      name: m.name,
+      place_type: m.place_type,
+      liked: m.liked,
+    }),
 };

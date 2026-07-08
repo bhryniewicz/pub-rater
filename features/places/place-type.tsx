@@ -54,8 +54,9 @@ function lightenColor(hex: string, amount: number): string {
 
 export function placeTypeGradient(placeType: string): string {
   const base = placeTypeColor(placeType);
-  const light = lightenColor(base, 0.4);
-  return `linear-gradient(to bottom right, ${base} 30%, ${light} 70%)`;
+  const top = lightenColor(base, 0.12);
+  const bottom = lightenColor(base, 0.32);
+  return `linear-gradient(135deg, ${top}, ${bottom})`;
 }
 
 export function dominantPlaceType(pubs: MapMarker[]): string {

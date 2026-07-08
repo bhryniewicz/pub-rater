@@ -16,6 +16,11 @@ import { EditPlaceDialog } from "@/features/admin/components/edit-place-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { RateDialog, type GuestCheckValues } from "@/features/places/components/rate-dialog";
+import {
+  AMENITY_CONFIG,
+  OtherAmenityIcon,
+  type AmenityKey,
+} from "@/features/places/amenities";
 import { usePlace } from "@/features/places/api/get-place";
 import { useCreateReview } from "@/features/places/api/create-review";
 import { useToggleThumbsUp } from "@/features/places/api/toggle-thumbs-up";
@@ -79,6 +84,15 @@ export function PlaceDetail() {
   const avgSpace = avgSubRating("space");
 
   const tickedKeys = new Set(reviews.flatMap((r) => r.additional_info ?? []));
+
+  const amenityAgreeCount = new Map<string, number>();
+  for (const r of reviews) {
+    for (const key of r.additional_info ?? []) {
+      amenityAgreeCount.set(key, (amenityAgreeCount.get(key) ?? 0) + 1);
+    }
+  }
+  const ownerAmenities = (place?.amenities ?? []) as AmenityKey[];
+  const hasOwnerAmenities = ownerAmenities.length > 0 || !!place?.amenity_other;
 
   const now = new Date();
   const jsDay = now.getDay();
@@ -252,6 +266,47 @@ export function PlaceDetail() {
             />
           </div>
         </div>
+
+        {/* Owner-declared amenities */}
+        {hasOwnerAmenities && (
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+              {t("amenities")}
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {ownerAmenities.map((key) => {
+                const config = AMENITY_CONFIG[key];
+                if (!config) return null;
+                const { labelKey, Icon } = config;
+                const agree = amenityAgreeCount.get(key) ?? 0;
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary border border-border"
+                  >
+                    <Icon className="w-4 h-4 shrink-0 text-primary" />
+                    <span className="text-xs font-medium text-foreground capitalize">
+                      {tGC(labelKey).toLowerCase()}
+                    </span>
+                    {agree > 0 && (
+                      <span className="text-[10px] font-bold text-muted-foreground">
+                        {t("ratersAgree", { count: agree })}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {place?.amenity_other && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary border border-border">
+                  <OtherAmenityIcon className="w-4 h-4 shrink-0 text-primary" />
+                  <span className="text-xs font-medium text-foreground">
+                    {place.amenity_other}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* What Raters Tick */}
         <div>

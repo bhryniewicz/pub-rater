@@ -4,15 +4,9 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { PubLine } from "@/assets/icons";
 import { TicketLayout } from "@/components/forms/_layout/ticket-layout";
+import { AMENITY_KEYS, AMENITY_CONFIG, type AmenityKey } from "@/features/places/amenities";
 
-export type AdditionalInfoKey =
-  | "outdoor_seating"
-  | "smoking_area"
-  | "great_beer_selection"
-  | "lots_of_beers_on_tap"
-  | "serves_food"
-  | "live_music"
-  | "dog_friendly";
+export type AdditionalInfoKey = AmenityKey;
 
 export type GuestCheckValues = {
   rating: number;
@@ -84,15 +78,9 @@ export function RateDialog({
 }: Props) {
   const t = useTranslations("guestCheck");
 
-  const ADDITIONAL_OPTIONS: { key: AdditionalInfoKey; label: string }[] = [
-    { key: "outdoor_seating", label: t("outdoor") },
-    { key: "smoking_area", label: t("smoking") },
-    { key: "great_beer_selection", label: t("beerSelection") },
-    { key: "lots_of_beers_on_tap", label: t("beersOnTap") },
-    { key: "serves_food", label: t("servesFood") },
-    { key: "live_music", label: t("liveMusic") },
-    { key: "dog_friendly", label: t("dogFriendly") },
-  ];
+  const ADDITIONAL_OPTIONS: { key: AdditionalInfoKey; label: string }[] = AMENITY_KEYS.map(
+    (key) => ({ key, label: t(AMENITY_CONFIG[key].labelKey) }),
+  );
 
   const [overallRating, setOverallRating] = useState(0);
   const [atmosphere, setAtmosphere] = useState(0);

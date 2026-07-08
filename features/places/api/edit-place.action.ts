@@ -41,6 +41,8 @@ export async function editPlace(markerId: string, payload: EditPlaceValues): Pro
       website: parsed.data.website,
       opening_hours: parsed.data.opening_hours,
       thumbnail: parsed.data.thumbnail,
+      amenities: parsed.data.amenities,
+      amenity_other: parsed.data.amenity_other,
     })
     .eq('marker_id', markerId)
 

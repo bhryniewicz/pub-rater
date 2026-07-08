@@ -1,35 +1,32 @@
 "use client";
 
-import { Store, DoorOpen } from "lucide-react";
+import { DoorOpen } from "lucide-react";
 import { useFilters } from "@/context/filter-context";
 
 export function OpenToggle({ className }: { className?: string }) {
   const { openFilterActive, setOpenFilterActive } = useFilters();
 
   return (
-    <div
-      className={`flex items-center gap-1 rounded-lg border border-border bg-secondary px-1.5 py-0.5 shrink-0 ${className ?? ""}`}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={openFilterActive}
+      onClick={() => setOpenFilterActive(!openFilterActive)}
+      className={`relative flex items-center h-7 w-12 rounded-full border border-border transition-colors shrink-0 cursor-pointer ${
+        openFilterActive ? "bg-open" : "bg-secondary"
+      } ${className ?? ""}`}
     >
-      <button
-        onClick={() => setOpenFilterActive(false)}
-        className={`p-0.5 rounded-md transition-colors ${
-          !openFilterActive
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
+      <span
+        className={`flex items-center justify-center h-5 w-5 rounded-full bg-background shadow-sm transition-transform ${
+          openFilterActive ? "translate-x-6" : "translate-x-1"
         }`}
       >
-        <Store size={16} strokeWidth={2} />
-      </button>
-      <button
-        onClick={() => setOpenFilterActive(true)}
-        className={`p-0.5 rounded-md transition-colors ${
-          openFilterActive
-            ? "bg-open text-white shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <DoorOpen size={16} strokeWidth={2} />
-      </button>
-    </div>
+        <DoorOpen
+          size={12}
+          strokeWidth={2.5}
+          className={openFilterActive ? "text-open" : "text-muted-foreground"}
+        />
+      </span>
+    </button>
   );
 }
