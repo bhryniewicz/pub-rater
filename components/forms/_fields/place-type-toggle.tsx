@@ -1,6 +1,6 @@
 "use client";
 
-import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/features/places/place-type";
+import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/lib/place-type";
 
 type Props = {
   value: string | undefined;

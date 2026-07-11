@@ -10,7 +10,7 @@ import { usePlaceRequests } from "@/features/admin/api/get-place-requests";
 import { useApprovePlaceRequest, useRejectPlaceRequest, useRequestMoreInfoPlaceRequest } from "@/features/admin/api/review-place-request";
 import dynamic from "next/dynamic";
 import { LuCheck, LuX, LuArrowLeft, LuArrowUpDown, LuInfo } from "react-icons/lu";
-import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/features/places/place-type";
+import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 const RequestMiniMap = dynamic(
   () => import("./request-mini-map").then((m) => m.RequestMiniMap),

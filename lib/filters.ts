@@ -1,4 +1,4 @@
-import type { MapMarker } from "@/schemas";
+import type { MapMarker } from "@/schemas/entities";
 import type { UserProfile } from "@/features/profile/api/get-user";
 import { isOpenNow, isOpenLate } from "@/lib/opening-hours";
 

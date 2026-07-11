@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { QUERY_KEYS } from "@/lib/query";
 import { useAdminCounts } from "@/features/admin/api/get-admin-counts";
 import { useRecentRequests } from "@/features/admin/api/get-recent-requests";
-import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/features/places/place-type";
+import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/lib/place-type";
 import { LuMapPin, LuShield, LuUsers, LuList } from "react-icons/lu";
 
 const STATUS_STYLES: Record<string, string> = {

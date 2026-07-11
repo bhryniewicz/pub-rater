@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AddPlaceSchema, type AddPlaceValues } from "@/features/places/schemas";
+import { AddPlaceSchema, type AddPlaceValues } from "@/schemas/forms";
 import type { PlaceRequest } from "@/features/requests/schemas";
 import { useResubmitPlaceRequest } from "@/features/requests/api/resubmit-place-request";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import {
 
 const LocationPickerMap = dynamic(
   () =>
-    import("@/features/places/components/location-picker-map").then((m) => ({
+    import("@/components/location-picker-map").then((m) => ({
       default: m.LocationPickerMap,
     })),
   { ssr: false },

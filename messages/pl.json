@@ -399,6 +399,7 @@
     "showAllResults": "Pokaż wszystkie wyniki dla \"{query}\"",
     "filters": "Filtry",
     "clearFilters": "Wyczyść filtry",
+    "clear": "Wyczyść",
     "mySpots": "📍 Moje miejsca",
     "likedPlaces": "🤍 Polubione",
     "placeType": "Typ miejsca",
@@ -414,6 +415,7 @@
     "location": "Lokalizacja",
     "allVoivodeships": "Wszystkie województwa",
     "nearMe": "W pobliżu",
+    "useMyLocation": "Użyj mojej lokalizacji",
     "locating": "Lokalizowanie…",
     "showPlaces": "Pokaż miejsca"
   },

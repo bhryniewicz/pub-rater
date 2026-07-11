@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { type Filters, DEFAULT_FILTERS } from "@/features/places/filters";
+import { type Filters, DEFAULT_FILTERS } from "@/lib/filters";
 
 type SetFilter = <K extends keyof Filters>(
   key: K,

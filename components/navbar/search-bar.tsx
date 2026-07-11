@@ -6,17 +6,17 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import type { MapMarker } from "@/lib/supabase";
-import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
+import { getMarkersQueryOptions } from "@/lib/markers/get-markers";
 import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
 import { VOIVODESHIPS } from "@/lib/constants";
-import { type Filters, DEFAULT_FILTERS } from "@/features/places/filters";
+import { type Filters, DEFAULT_FILTERS } from "@/lib/filters";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
-import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
-import { PlaceTypeIcon, placeTypeGradient } from "@/features/places/place-type";
+import { useOwnedMarkers } from "@/lib/markers/get-owned-markers";
+import { PlaceTypeIcon, placeTypeGradient } from "@/lib/place-type";
 import { analytics } from "@/lib/analytics";
-import { AmenityFilters } from "@/features/places/components/amenity-filter-bar";
+import { AmenityFilters } from "@/components/amenity-filter-bar";
 import {
   Command,
   CommandList,
@@ -29,6 +29,7 @@ import {
   LuSlidersHorizontal,
   LuCrosshair,
   LuChevronUp,
+  LuBeer,
 } from "react-icons/lu";
 import { Drawer } from "@/components/ui/drawer";
 
@@ -37,10 +38,10 @@ export function SearchBar() {
 
   const RATING_OPTIONS: { label: string; value: number | null }[] = [
     { label: t("ratingAny"), value: null },
-    { label: "3.0 ★ +", value: 3 },
-    { label: "3.5 ★ +", value: 3.5 },
-    { label: "4.0 ★ +", value: 4 },
-    { label: "4.5 ★ +", value: 4.5 },
+    { label: "3.0+", value: 3 },
+    { label: "3.5+", value: 3.5 },
+    { label: "4.0+", value: 4 },
+    { label: "4.5+", value: 4.5 },
   ];
   const [input, setInput] = useState("");
   const [debouncedInput] = useDebounce(input, 500);
@@ -316,15 +317,15 @@ export function SearchBar() {
         headerAction={
           <button
             onClick={clearPendingFilters}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm font-semibold text-primary hover:opacity-80 transition-opacity"
           >
-            {t("clearFilters")}
+            {t("clear")}
           </button>
         }
         footer={
           <button
             onClick={handleApplyFilters}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base"
+            className="btn-gradient w-full py-4 rounded-2xl font-bold text-base"
           >
             {t("showPlaces")}
           </button>
@@ -339,7 +340,7 @@ export function SearchBar() {
                       onClick={() => toggleSection("placeType")}
                       className="flex w-full items-center justify-between mb-3"
                     >
-                      <span className="font-bold text-foreground text-sm">{t("placeType")}</span>
+                      <span className="mono-label text-primary text-[11px] font-semibold">{t("placeType")}</span>
                       <LuChevronUp
                         size={16}
                         className={`text-muted-foreground transition-transform ${
@@ -380,7 +381,7 @@ export function SearchBar() {
                     onClick={() => toggleSection("minRating")}
                     className="flex w-full items-center justify-between mb-3"
                   >
-                    <span className="font-bold text-foreground text-sm">{t("minRating")}</span>
+                    <span className="mono-label text-primary text-[11px] font-semibold">{t("minRating")}</span>
                     <LuChevronUp
                       size={16}
                       className={`text-muted-foreground transition-transform ${
@@ -389,17 +390,27 @@ export function SearchBar() {
                     />
                   </button>
                   {!collapsedSections.minRating && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-nowrap gap-1.5">
                     {RATING_OPTIONS.map(({ label, value }) => (
                       <button
                         key={label}
                         onClick={() => setPendingFilter("minRating", value)}
-                        className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors ${
                           pending.minRating === value
-                            ? "bg-secondary border-foreground/20 text-foreground"
+                            ? "bg-primary border-transparent text-primary-foreground"
                             : "border-border text-muted-foreground hover:border-foreground/20"
                         }`}
                       >
+                        {value !== null && (
+                          <LuBeer
+                            size={12}
+                            className={
+                              pending.minRating === value
+                                ? "text-primary-foreground"
+                                : "text-primary"
+                            }
+                          />
+                        )}
                         {label}
                       </button>
                     ))}
@@ -413,7 +424,7 @@ export function SearchBar() {
                     onClick={() => toggleSection("openingHours")}
                     className="flex w-full items-center justify-between mb-3"
                   >
-                    <span className="font-bold text-foreground text-sm">{t("openingHours")}</span>
+                    <span className="mono-label text-primary text-[11px] font-semibold">{t("openingHours")}</span>
                     <LuChevronUp
                       size={16}
                       className={`text-muted-foreground transition-transform ${
@@ -422,12 +433,8 @@ export function SearchBar() {
                     />
                   </button>
                   {!collapsedSections.openingHours && (
-                  <div className="flex flex-col gap-2">
-                    <div
-                      className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
-                        pending.open ? "bg-secondary border-foreground/20" : "border-border"
-                      }`}
-                    >
+                  <div className="rounded-2xl border border-border bg-card/40">
+                    <div className="flex items-center justify-between px-4 py-3.5">
                       <div>
                         <p
                           className={`text-sm font-medium ${
@@ -446,11 +453,8 @@ export function SearchBar() {
                         className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
                       />
                     </div>
-                    <div
-                      className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
-                        pending.openLate ? "bg-secondary border-foreground/20" : "border-border"
-                      }`}
-                    >
+                    <div className="h-px bg-border mx-4" />
+                    <div className="flex items-center justify-between px-4 py-3.5">
                       <div>
                         <p
                           className={`text-sm font-medium ${
@@ -479,7 +483,7 @@ export function SearchBar() {
                     onClick={() => toggleSection("location")}
                     className="flex w-full items-center justify-between mb-3"
                   >
-                    <span className="font-bold text-foreground text-sm">{t("location")}</span>
+                    <span className="mono-label text-primary text-[11px] font-semibold">{t("location")}</span>
                     <LuChevronUp
                       size={16}
                       className={`text-muted-foreground transition-transform ${
@@ -501,41 +505,38 @@ export function SearchBar() {
                         </option>
                       ))}
                     </select>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (geoStatus === "denied" || geoStatus === "unavailable") return;
-                          if (pending.radius !== null) {
-                            setPendingFilter("radius", null);
-                          } else {
-                            if (geoStatus === "idle") enableGeo();
-                            setPendingFilter("radius", 1);
-                          }
-                        }}
-                        disabled={geoStatus === "denied" || geoStatus === "unavailable"}
-                        className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          pending.radius !== null
-                            ? "bg-secondary border-foreground/20 text-foreground"
-                            : "border-border text-muted-foreground hover:border-foreground/20"
-                        }`}
+                    <div className="h-px bg-border" />
+                    <button
+                      onClick={() => {
+                        if (geoStatus === "denied" || geoStatus === "unavailable") return;
+                        if (pending.radius !== null) {
+                          setPendingFilter("radius", null);
+                        } else {
+                          if (geoStatus === "idle") enableGeo();
+                          setPendingFilter("radius", 1);
+                        }
+                      }}
+                      disabled={geoStatus === "denied" || geoStatus === "unavailable"}
+                      className={`flex w-full items-center gap-2.5 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        pending.radius !== null ? "text-foreground" : "text-primary hover:opacity-80"
+                      }`}
+                    >
+                      <LuCrosshair size={16} />
+                      {geoStatus === "loading" ? t("locating") : t("useMyLocation")}
+                    </button>
+                    {pending.radius !== null && geoCoords && (
+                      <select
+                        value={pending.radius}
+                        onChange={(e) => setPendingFilter("radius", Number(e.target.value))}
+                        className="w-full bg-input border border-border text-foreground text-sm rounded-full px-4 py-2.5 focus:outline-none focus:border-ring"
                       >
-                        <LuCrosshair size={14} />
-                        {geoStatus === "loading" ? t("locating") : t("nearMe")}
-                      </button>
-                      {pending.radius !== null && geoCoords && (
-                        <select
-                          value={pending.radius}
-                          onChange={(e) => setPendingFilter("radius", Number(e.target.value))}
-                          className="flex-1 bg-input border border-border text-foreground text-sm rounded-full px-4 py-2.5 focus:outline-none focus:border-ring"
-                        >
-                          <option value="0.1">0.1 km</option>
-                          <option value="0.5">0.5 km</option>
-                          <option value="1">1 km</option>
-                          <option value="2">2 km</option>
-                          <option value="5">5 km</option>
-                        </select>
-                      )}
-                    </div>
+                        <option value="0.1">0.1 km</option>
+                        <option value="0.5">0.5 km</option>
+                        <option value="1">1 km</option>
+                        <option value="2">2 km</option>
+                        <option value="5">5 km</option>
+                      </select>
+                    )}
                   </div>
                   )}
                 </div>

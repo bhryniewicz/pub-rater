@@ -6,24 +6,24 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS } from "@/lib/opening-hours";
-import type { OpeningHours } from "@/schemas";
+import type { OpeningHours } from "@/schemas/entities";
 import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { LuNavigation, LuThumbsUp, LuPencil, LuCheck, LuShare2 } from "react-icons/lu";
 import { PubLine } from "@/assets/icons";
 import { ClaimForm } from "@/features/requests/components/claim-form";
-import { EditPlaceDialog } from "@/features/admin/components/edit-place-dialog";
+import { EditPlaceDialog } from "@/features/place/components/edit-place-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { RateDialog, type GuestCheckValues } from "@/features/places/components/rate-dialog";
+import { RateDialog, type GuestCheckValues } from "@/features/place/components/rate-dialog";
 import {
   AMENITY_CONFIG,
   OtherAmenityIcon,
   type AmenityKey,
-} from "@/features/places/amenities";
-import { usePlace } from "@/features/places/api/get-place";
-import { useCreateReview } from "@/features/places/api/create-review";
-import { useToggleThumbsUp } from "@/features/places/api/toggle-thumbs-up";
+} from "@/lib/amenities";
+import { usePlace } from "@/features/place/api/get-place";
+import { useCreateReview } from "@/features/place/api/create-review";
+import { useToggleThumbsUp } from "@/features/place/api/toggle-thumbs-up";
 
 function avatarInitials(email: string): string {
   return email.split("@")[0].slice(0, 2).toUpperCase();

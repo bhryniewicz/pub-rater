@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { PubLine } from "@/assets/icons";
 import { TicketLayout } from "@/components/forms/_layout/ticket-layout";
-import { AMENITY_KEYS, AMENITY_CONFIG, type AmenityKey } from "@/features/places/amenities";
+import { AMENITY_KEYS, AMENITY_CONFIG, type AmenityKey } from "@/lib/amenities";
 
 export type AdditionalInfoKey = AmenityKey;
 

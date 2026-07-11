@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { AMENITY_OTHER_MAX } from "@/lib/constants"
-import { OpeningHoursSchema } from "@/schemas"
+import { OpeningHoursSchema } from "@/schemas/entities"
 
 export const AMENITY_KEYS = [
   'outdoor_seating',

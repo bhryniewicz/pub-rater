@@ -13,7 +13,7 @@ import { useUserRequests } from "@/features/profile/api/get-user-requests";
 import { useUpdatePreferences } from "@/features/profile/api/update-preferences";
 import { useResubmitOwnerClaim } from "@/features/requests/api/resubmit-owner-claim";
 import { ResubmitPlaceDialog } from "@/features/owner/components/resubmit-place-dialog";
-import { PLACE_TYPE_LABELS } from "@/features/places/place-type";
+import { PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 type Preferences = {
   pub_preference: boolean;

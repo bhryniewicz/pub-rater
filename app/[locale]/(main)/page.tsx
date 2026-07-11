@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/query";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { fetchPlaceTypeCounts } from "@/features/markers/api/get-place-type-counts";
+import { fetchPlaceTypeCounts } from "@/lib/markers/get-place-type-counts";
 import HomeContent from "./_components/home-content";
 
 function Spinner() {

@@ -4,18 +4,18 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { usePubList } from "@/features/places/api/get-pub-list";
-import { useMarkers } from "@/features/markers/api/get-markers";
-import { PubList } from "@/features/places/components/pub-list/pub-list";
+import { usePubList } from "@/features/pub-list/api/get-pub-list";
+import { useMarkers } from "@/lib/markers/get-markers";
+import { PubList } from "@/features/pub-list/components/pub-list";
 import { AgeGate } from "@/components/age-gate";
 import { useUser } from "@/features/profile/api/get-user";
 import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
 import { LuArrowLeft } from "react-icons/lu";
-import { AmenityFilterBar } from "@/features/places/components/amenity-filter-bar";
+import { AmenityFilterBar } from "@/components/amenity-filter-bar";
 import { OpenToggle } from "@/components/open-toggle";
 
-const Map = dynamic(() => import("@/features/places/components/map/map"), {
+const Map = dynamic(() => import("@/features/map/components/map"), {
   ssr: false,
 });
 

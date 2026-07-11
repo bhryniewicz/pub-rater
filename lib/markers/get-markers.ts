@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MapMarker } from "@/schemas";
+import type { MapMarker } from "@/schemas/entities";
 import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useFilters } from "@/context/filter-context";
@@ -14,7 +14,7 @@ import {
   FILTER_DEFS,
   resolvePlaceTypes,
   buildMarkerPredicate,
-} from "@/features/places/filters";
+} from "@/lib/filters";
 import { useOwnedMarkers } from "./get-owned-markers";
 
 export async function fetchAllMarkers(client: SupabaseClient = supabase): Promise<MapMarker[]> {

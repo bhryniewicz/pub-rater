@@ -6,7 +6,7 @@ import {
   fetchPubListPage,
   DEFAULT_PUB_LIST_PARAMS,
   DEFAULT_PUB_LIST_QUERY_KEY,
-} from "@/features/places/api/get-pub-list";
+} from "@/features/pub-list/api/get-pub-list";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient();

@@ -1,6 +1,6 @@
 import type { MapMarker } from "@/lib/supabase";
 
-import { dominantPlaceType } from "@/features/places/place-type";
+import { dominantPlaceType } from "@/lib/place-type";
 import { CLUSTER_THRESHOLD, SPLIT_ZOOM, LARGE_CLUSTER } from "@/lib/constants";
 
 type PlaceFeatureCollection = {

@@ -2,7 +2,7 @@
 
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { ReviewSchema, type Review } from "@/schemas";
+import { ReviewSchema, type Review } from "@/schemas/entities";
 import { QUERY_KEYS } from "@/lib/query";
 
 async function fetchUserReviews(userId: string): Promise<Review[]> {

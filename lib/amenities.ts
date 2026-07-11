@@ -7,9 +7,9 @@ import {
   Music,
   Dog,
 } from "@/assets/icons";
-import type { AmenityKey } from "@/features/places/schemas";
+import type { AmenityKey } from "@/schemas/forms";
 
-export { AMENITY_KEYS, type AmenityKey } from "@/features/places/schemas";
+export { AMENITY_KEYS, type AmenityKey } from "@/schemas/forms";
 
 type AmenityIcon = ComponentType<{
   size?: number;

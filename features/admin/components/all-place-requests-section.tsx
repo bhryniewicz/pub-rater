@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { usePlaceRequests } from "@/features/admin/api/get-place-requests";
-import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/features/places/place-type";
+import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/lib/place-type";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-500/15 text-amber-400 border border-amber-500/20",

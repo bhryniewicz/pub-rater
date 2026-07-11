@@ -2,8 +2,8 @@
 
 import { getUser } from '@/lib/supabase/auth'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { AddPlaceSchema, type AddPlaceValues } from '@/features/places/schemas'
-import type { OpeningHours } from '@/schemas'
+import { AddPlaceSchema, type AddPlaceValues } from '@/schemas/forms'
+import type { OpeningHours } from '@/schemas/entities'
 
 type RequestPlacePayload = AddPlaceValues & { opening_hours: OpeningHours | null }
 

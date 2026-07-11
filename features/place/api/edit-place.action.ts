@@ -2,7 +2,7 @@
 
 import { getUser, getIsAdmin } from '@/lib/supabase/auth'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { EditPlaceSchema, type EditPlaceValues } from '@/features/places/schemas'
+import { EditPlaceSchema, type EditPlaceValues } from '@/schemas/forms'
 
 export async function editPlace(markerId: string, payload: EditPlaceValues): Promise<void> {
   const [user, isAdmin] = await Promise.all([getUser(), getIsAdmin()])

@@ -23,7 +23,7 @@ import {
   PlaceTypeIcon,
   placeTypeColor,
   placeTypeGradient,
-} from "@/features/places/place-type";
+} from "@/lib/place-type";
 import {
   clusterPlaces,
   placesToGeoJSON,

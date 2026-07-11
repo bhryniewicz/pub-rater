@@ -1,6 +1,6 @@
 import type { Map as MapboxMap } from "mapbox-gl";
 
-import { placeTypeColor } from "@/features/places/place-type";
+import { placeTypeColor } from "@/lib/place-type";
 import { lightenColor } from "@/lib/color";
 
 // Place types rendered as individual symbol-layer markers.

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { editPlace } from "@/features/places/api/edit-place.action";
+import { editPlace } from "@/features/place/api/edit-place.action";
 import { QUERY_KEYS } from "@/lib/query";
-import type { EditPlaceValues } from "@/features/places/schemas";
+import type { EditPlaceValues } from "@/schemas/forms";
 import type { MutationConfig } from "@/lib/query/config";
 
 type UseUpdatePlaceOptions = {

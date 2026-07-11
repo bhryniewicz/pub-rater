@@ -21,7 +21,7 @@ import { useOwnerChartData } from "@/features/owner/api/get-owner-chart-data";
 import { useOwnerRatingBreakdown } from "@/features/owner/api/get-owner-rating-breakdown";
 import { BeerRating } from "@/components/beer-rating";
 import { RatingBreakdown } from "@/components/rating-breakdown";
-import { EditPlaceDialog } from "@/features/admin/components/edit-place-dialog";
+import { EditPlaceDialog } from "@/features/place/components/edit-place-dialog";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ import {
   PlaceTypeIcon,
   PLACE_TYPE_LABELS,
   placeTypeColor,
-} from "@/features/places/place-type";
+} from "@/lib/place-type";
 import { supabase } from "@/lib/supabase";
 import type { Place } from "@/lib/supabase";
 

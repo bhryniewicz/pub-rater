@@ -1,6 +1,6 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { fetchPlaceData, getPlaceQueryOptions } from "@/features/places/api/get-place";
+import { fetchPlaceData, getPlaceQueryOptions } from "@/features/place/api/get-place";
 import { PlaceDetail } from "./_components/place-detail";
 
 export default async function PlaceDetailPage({

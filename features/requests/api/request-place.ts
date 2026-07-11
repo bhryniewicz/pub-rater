@@ -3,8 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestPlace } from "@/features/requests/api/request-place.action";
 import { QUERY_KEYS } from "@/lib/query";
-import type { AddPlaceValues } from "@/features/places/schemas";
-import type { OpeningHours } from "@/schemas";
+import type { AddPlaceValues } from "@/schemas/forms";
+import type { OpeningHours } from "@/schemas/entities";
 import type { MutationConfig } from "@/lib/query/config";
 
 type UseRequestPlaceOptions = {

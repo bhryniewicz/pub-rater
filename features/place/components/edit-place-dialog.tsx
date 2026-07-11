@@ -5,14 +5,14 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EditPlaceSchema, type EditPlaceValues, type AmenityKey } from "@/features/places/schemas";
+import { EditPlaceSchema, type EditPlaceValues, type AmenityKey } from "@/schemas/forms";
 import {
   AMENITY_KEYS,
   AMENITY_CONFIG,
-} from "@/features/places/amenities";
+} from "@/lib/amenities";
 import { AMENITY_OTHER_MAX } from "@/lib/constants";
 import type { Place } from "@/lib/supabase";
-import { useUpdatePlace } from "@/features/places/api/update-place";
+import { useUpdatePlace } from "@/features/place/api/update-place";
 import { Input } from "@/components/ui/input";
 import {
   Form,

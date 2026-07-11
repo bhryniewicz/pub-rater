@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AddPlaceSchema, type AddPlaceValues } from "@/features/places/schemas";
+import { AddPlaceSchema, type AddPlaceValues } from "@/schemas/forms";
 import { useRequestPlace } from "@/features/requests/api/request-place";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,7 +20,7 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/features/places/place-type";
+import { PlaceTypeIcon, PLACE_TYPE_FORM_LIST } from "@/lib/place-type";
 import {
   DAYS,
   type Day,
@@ -39,7 +39,7 @@ import {
 
 const LocationPickerMap = dynamic(
   () =>
-    import("@/features/places/components/location-picker-map").then((m) => ({
+    import("@/components/location-picker-map").then((m) => ({
       default: m.LocationPickerMap,
     })),
   { ssr: false },

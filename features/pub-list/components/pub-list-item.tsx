@@ -14,17 +14,17 @@ import { IoLocationSharp } from "react-icons/io5";
 import { LuMap } from "react-icons/lu";
 import { motion } from "framer-motion";
 import { HeartIcon, HeartOutlineIcon } from "@/assets/icons";
-import { PlaceTypeIcon } from "@/features/places/place-type";
+import { PlaceTypeIcon } from "@/lib/place-type";
 import {
   AMENITY_CONFIG,
   OtherAmenityIcon,
   type AmenityKey,
-} from "@/features/places/amenities";
+} from "@/lib/amenities";
 import { BeerRating } from "@/components/beer-rating";
-import { useLikePlace } from "@/features/places/api/like-place";
+import { useLikePlace } from "@/features/pub-list/api/like-place";
 import { analytics } from "@/lib/analytics";
 import { OpenStatus } from "./open-status";
-import { useReviewedMarkerIds } from "../../api/get-reviewed-marker-ids";
+import { useReviewedMarkerIds } from "../api/get-reviewed-marker-ids";
 
 const TicketBarcode = memo(function TicketBarcode({
   id,

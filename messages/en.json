@@ -399,6 +399,7 @@
     "showAllResults": "Show all results for \"{query}\"",
     "filters": "Filters",
     "clearFilters": "Clear filters",
+    "clear": "Clear",
     "mySpots": "📍 My spots",
     "likedPlaces": "🤍 Liked places",
     "placeType": "Place type",
@@ -414,6 +415,7 @@
     "location": "Location",
     "allVoivodeships": "All voivodeships",
     "nearMe": "Near me",
+    "useMyLocation": "Use my location",
     "locating": "Locating…",
     "showPlaces": "Show places"
   },

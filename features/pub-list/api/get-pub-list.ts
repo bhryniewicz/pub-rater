@@ -13,7 +13,7 @@ import {
   DEFAULT_FILTERS,
   DEFAULT_FILTER_ENV,
   FILTER_DEFS,
-} from "@/features/places/filters";
+} from "@/lib/filters";
 import { PUB_LIST_PAGE_SIZE } from "@/lib/constants";
 
 export type QueryParams = {

@@ -5,13 +5,13 @@ import {
   PlaceTypeIcon,
   PLACE_TYPE_LABELS,
   placeTypeGradient,
-} from "@/features/places/place-type";
+} from "@/lib/place-type";
 import { analytics } from "@/lib/analytics";
 import { CountBadge } from "@/components/ui/count-badge";
 import { useFilters } from "@/context/filter-context";
 import { useUser } from "@/features/profile/api/get-user";
-import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
-import { usePlaceTypeCounts } from "@/features/markers/api/get-place-type-counts";
+import { useOwnedMarkers } from "@/lib/markers/get-owned-markers";
+import { usePlaceTypeCounts } from "@/lib/markers/get-place-type-counts";
 
 export type FilterItem = { type: string; count: number };
 

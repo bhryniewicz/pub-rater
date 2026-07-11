@@ -10,7 +10,7 @@ import { useTheme } from "next-themes";
 import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { SearchBar } from "./search-bar";
-import { AddPlaceDialog } from "@/features/places/components/add-place-dialog";
+import { AddPlaceDialog } from "@/components/add-place-dialog";
 import { Drawer } from "@/components/ui/drawer";
 import { supabase } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
