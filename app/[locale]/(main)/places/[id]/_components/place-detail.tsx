@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS } from "@/lib/opening-hours";
-import type { OpeningHours } from "@/features/places/schemas";
+import type { OpeningHours } from "@/schemas";
 import { useUser } from "@/features/profile/api/get-user";
 import { useGeolocation } from "@/context/geolocation-context";
 import { LuNavigation, LuThumbsUp, LuPencil, LuCheck, LuShare2 } from "react-icons/lu";

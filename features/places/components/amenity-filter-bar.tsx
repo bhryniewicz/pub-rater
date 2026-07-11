@@ -100,14 +100,7 @@ export function AmenityFilters({
 }
 
 export function AmenityFilterBar() {
-  const {
-    categoryFilter,
-    setCategoryFilter,
-    likedFilterActive,
-    setLikedFilterActive,
-    ownedFilterActive,
-    setOwnedFilterActive,
-  } = useFilters();
+  const { filters, setFilter } = useFilters();
 
   const { user, profile } = useUser();
   const { data: ownedIds = null } = useOwnedMarkers(
@@ -128,27 +121,27 @@ export function AmenityFilterBar() {
 
   const activeTypes = useMemo(
     () => [
-      ...categoryFilter,
-      ...(likedFilterActive ? ["liked"] : []),
-      ...(ownedFilterActive ? ["owned"] : []),
+      ...filters.categories,
+      ...(filters.liked ? ["liked"] : []),
+      ...(filters.owned ? ["owned"] : []),
     ],
-    [categoryFilter, likedFilterActive, ownedFilterActive],
+    [filters.categories, filters.liked, filters.owned],
   );
 
   function handleToggle(type: string) {
     analytics.categoryFilterClicked(type);
     if (type === "liked") {
-      setCategoryFilter([]);
-      setOwnedFilterActive(false);
-      setLikedFilterActive((prev) => !prev);
+      setFilter("categories", []);
+      setFilter("owned", false);
+      setFilter("liked", (prev) => !prev);
     } else if (type === "owned") {
-      setCategoryFilter([]);
-      setLikedFilterActive(false);
-      setOwnedFilterActive((prev) => !prev);
+      setFilter("categories", []);
+      setFilter("liked", false);
+      setFilter("owned", (prev) => !prev);
     } else {
-      setLikedFilterActive(false);
-      setOwnedFilterActive(false);
-      setCategoryFilter((prev) => (!prev.includes(type) ? [type] : []));
+      setFilter("liked", false);
+      setFilter("owned", false);
+      setFilter("categories", (prev) => (!prev.includes(type) ? [type] : []));
     }
   }
 

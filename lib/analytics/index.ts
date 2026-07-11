@@ -1,4 +1,4 @@
-import { posthog } from "@/lib/posthog";
+import { posthog } from "@/lib/analytics/posthog";
 
 // Central catalog of product analytics events. Components call these wrappers
 // instead of posthog.capture(...) directly, so event names and property shapes

@@ -5,4 +5,4 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
-export type { MapMarker, PubListItem, Place, Review } from '@/features/places/schemas'
+export type { MapMarker, PubListItem, Place, Review } from '@/schemas'

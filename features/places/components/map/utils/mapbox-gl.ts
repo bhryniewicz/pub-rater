@@ -1,6 +1,7 @@
 import type { Map as MapboxMap } from "mapbox-gl";
 
 import { placeTypeColor } from "@/features/places/place-type";
+import { lightenColor } from "@/lib/color";
 
 // Place types rendered as individual symbol-layer markers.
 export const PLACE_ICON_TYPES = ["pub", "bar", "biergarten"] as const;
@@ -34,21 +35,20 @@ export function setSavedViewport(viewport: {
 // onto a canvas for the Mapbox symbol layer without rendering React).
 const ICON_GLYPHS: Record<string, { viewBox: string; paths: string[] }> = {
   pub: {
-    viewBox: "4 7 17 15",
+    viewBox: "0 0 24 24",
     paths: [
-      "M5.5 8.5h9.5V20a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1z",
-      "M15 10.5h2.6A2.4 2.4 0 0 1 20 12.9v1.6a2.4 2.4 0 0 1-2.4 2.4H15v-2h2.2a.6.6 0 0 0 .6-.6v-1.2a.6.6 0 0 0-.6-.6H15z",
+      "M6 5h9v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z",
+      "M15 8h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3",
+      "M8 3v2M11 3v2",
     ],
   },
   bar: {
     viewBox: "0 0 24 24",
-    paths: ["M3.5 5h17l-7.5 8.2V18h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-4.8z"],
+    paths: ["M5 4h14l-6 8v6M13 18h-4M13 18h4"],
   },
   biergarten: {
     viewBox: "0 0 24 24",
-    paths: [
-      "M12 2.5a5.5 5.5 0 0 0-4.9 8A4.2 4.2 0 0 0 9 18.6V20a1.1 1.1 0 0 0 2.2 0v-1.3h1.6V20a1.1 1.1 0 0 0 2.2 0v-1.4a4.2 4.2 0 0 0 1.9-8.1A5.5 5.5 0 0 0 12 2.5z",
-    ],
+    paths: ["M12 3l6 9h-3l4 6H5l4-6H6z", "M12 21v-3"],
   },
 };
 
@@ -58,9 +58,16 @@ export function placeIconId(placeType: string): string {
 
 function buildIconSvg(placeType: string): string {
   const color = placeTypeColor(placeType);
+  const top = lightenColor(color, 0.12);
+  const bottom = lightenColor(color, 0.32);
   const glyph = ICON_GLYPHS[placeType];
-  const paths = glyph.paths.map((d) => `<path d="${d}" fill="#fff"/>`).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 36 36"><rect x="2" y="2" width="32" height="32" rx="12" fill="${color}" opacity="0.33"/><rect x="4" y="4" width="28" height="28" rx="10" fill="${color}"/><svg x="10" y="10" width="16" height="16" viewBox="${glyph.viewBox}">${paths}</svg></svg>`;
+  const paths = glyph.paths
+    .map(
+      (d) =>
+        `<path d="${d}" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`,
+    )
+    .join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 36 36"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${top}"/><stop offset="100%" stop-color="${bottom}"/></linearGradient></defs><rect x="2" y="2" width="32" height="32" rx="12" fill="${color}" opacity="0.33"/><rect x="4" y="4" width="28" height="28" rx="10" fill="url(#g)"/><svg x="10" y="10" width="16" height="16" viewBox="${glyph.viewBox}">${paths}</svg></svg>`;
 }
 
 export type PlaceIconImages = Record<string, HTMLImageElement>;

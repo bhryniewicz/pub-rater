@@ -33,7 +33,7 @@ import {
   type DayState,
   hoursToState,
   stateToHours,
-} from "@/lib/form-opening-hours";
+} from "@/lib/opening-hours/form";
 
 const LocationPickerMap = dynamic(
   () =>

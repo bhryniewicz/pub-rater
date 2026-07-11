@@ -2,8 +2,8 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { resubmitPlaceRequest } from "@/features/requests/api/resubmit-place-request.action";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import type { MutationConfig } from "@/lib/react-query";
+import { QUERY_KEYS } from "@/lib/query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseResubmitPlaceRequestOptions = {
   mutationConfig?: MutationConfig<typeof resubmitPlaceRequest>;

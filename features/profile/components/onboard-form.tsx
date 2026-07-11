@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import type { UserData } from "@/features/profile/api/get-user";
 
 type Preferences = {

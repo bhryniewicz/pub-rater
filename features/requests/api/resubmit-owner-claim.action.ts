@@ -1,7 +1,7 @@
 'use server'
 
-import { getUser } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getUser } from '@/lib/supabase/auth'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const ResubmitClaimSchema = z.object({

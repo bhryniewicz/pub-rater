@@ -1,5 +1,5 @@
 import 'server-only'
-import { createServerSupabaseClient } from './supabase-server'
+import { createServerSupabaseClient } from './server'
 
 /**
  * Returns the currently authenticated user, or null if not logged in.

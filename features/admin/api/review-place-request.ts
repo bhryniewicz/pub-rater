@@ -2,8 +2,8 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { approveRequest, rejectRequest, requestMoreInfo } from "@/features/admin/api/review-request.action";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import type { MutationConfig } from "@/lib/react-query";
+import { QUERY_KEYS } from "@/lib/query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseApprovePlaceRequestOptions = {
   mutationConfig?: MutationConfig<typeof approveRequest>;

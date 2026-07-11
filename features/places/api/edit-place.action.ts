@@ -1,7 +1,7 @@
 'use server'
 
-import { getUser, getIsAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getUser, getIsAdmin } from '@/lib/supabase/auth'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { EditPlaceSchema, type EditPlaceValues } from '@/features/places/schemas'
 
 export async function editPlace(markerId: string, payload: EditPlaceValues): Promise<void> {

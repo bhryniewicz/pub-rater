@@ -2,9 +2,10 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestPlace } from "@/features/requests/api/request-place.action";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import type { AddPlaceValues, OpeningHours } from "@/features/places/schemas";
-import type { MutationConfig } from "@/lib/react-query";
+import { QUERY_KEYS } from "@/lib/query";
+import type { AddPlaceValues } from "@/features/places/schemas";
+import type { OpeningHours } from "@/schemas";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseRequestPlaceOptions = {
   mutationConfig?: MutationConfig<typeof requestPlace>;

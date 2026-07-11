@@ -3,7 +3,7 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { LocationRequestSchema } from "@/features/requests/schemas";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 
 async function fetchRecentRequests() {
   const { data, error } = await supabase

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar/navbar";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   fetchPubListPage,
   DEFAULT_PUB_LIST_PARAMS,
@@ -21,7 +21,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   });
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="home-ambient flex flex-col h-screen overflow-hidden">
       <Navbar />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <Suspense>

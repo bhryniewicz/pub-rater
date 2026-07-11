@@ -1,7 +1,7 @@
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase, type Place, type Review } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 
 export type MarkerInfo = {
   id: string;

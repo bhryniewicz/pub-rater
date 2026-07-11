@@ -1,7 +1,7 @@
 'use server'
 
-import { getUser, getIsOwner, getIsAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getUser, getIsOwner, getIsAdmin } from '@/lib/supabase/auth'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { ClaimPlaceSchema, type ClaimPlaceValues } from '@/features/requests/schemas'
 
 export async function claimPlace(payload: ClaimPlaceValues): Promise<void> {

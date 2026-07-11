@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-sans);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -75,8 +75,8 @@
   --chart-3: #EEDB8C;
   --chart-4: #FBF2C6;
   --chart-5: #3A6E3A;
-  --open: #4a6e20;
-  --closed: #c84535;
+  --open: #16a34a;
+  --closed: #ef4444;
   --radius: 0.625rem;
   --sidebar: #F3E3A4;
   --sidebar-foreground: #2B1A08;
@@ -121,8 +121,27 @@
   --sidebar-accent-foreground: #ECD2A5;
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: #C87538;
-  --open: #80b840;
-  --closed: #d97058;
+  --open: #16a34a;
+  --closed: #ef4444;
+}
+
+/* Home page ambient — straw base + soft category-color glows (light) */
+.home-ambient {
+  background:
+    radial-gradient(46% 44% at 42% -6%, rgba(224, 140, 45, 0.32), transparent 68%),
+    radial-gradient(40% 42% at 14% 2%, rgba(124, 58, 237, 0.16), transparent 70%),
+    radial-gradient(40% 40% at 84% 4%, rgba(22, 163, 74, 0.13), transparent 70%),
+    linear-gradient(180deg, #F7EAB2 0%, #F3E3A4 42%, #EEDB8C 100%);
+}
+
+/* Home page ambient — warm brown base + soft blurry category-color glows (dark only) */
+.dark .home-ambient {
+  background:
+    radial-gradient(46% 44% at 42% -4%, rgba(224, 140, 45, 0.17), transparent 68%),
+    radial-gradient(40% 42% at 14% 2%, rgba(124, 58, 237, 0.15), transparent 70%),
+    radial-gradient(40% 40% at 84% 4%, rgba(205, 115, 40, 0.12), transparent 70%),
+    radial-gradient(32% 32% at 88% 26%, rgba(22, 163, 74, 0.06), transparent 74%),
+    linear-gradient(180deg, #140c07 0%, #0d0705 42%, #0A0606 66%);
 }
 
 .mapboxgl-popup-content {
@@ -139,8 +158,7 @@
 }
 
 /* Outside @layer — beats Tailwind utilities in the cascade */
-.font-thin, .font-extralight, .font-light,
-.font-bold, .font-extrabold, .font-black {
+.font-thin, .font-extralight, .font-light {
   font-weight: 400;
 }
 

@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useGeolocation } from "@/context/geolocation-context";
 import { type PlaceRequest } from "@/features/requests/schemas";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { useUserReviews } from "@/features/profile/api/get-user-reviews";
 import { useUserRequests } from "@/features/profile/api/get-user-requests";
 import { useUpdatePreferences } from "@/features/profile/api/update-preferences";

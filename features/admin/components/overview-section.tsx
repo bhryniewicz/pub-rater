@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { useAdminCounts } from "@/features/admin/api/get-admin-counts";
 import { useRecentRequests } from "@/features/admin/api/get-recent-requests";
 import { PlaceTypeIcon, PLACE_TYPE_LABELS } from "@/features/places/place-type";

@@ -1,4 +1,4 @@
-import type { OpeningHours } from "@/features/places/schemas";
+import type { OpeningHours } from "@/schemas";
 
 export const DAYS = ["mo", "tu", "we", "th", "fr", "sa", "su"] as const;
 export type Day = (typeof DAYS)[number];

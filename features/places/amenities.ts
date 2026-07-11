@@ -1,27 +1,31 @@
-import type { IconType } from "react-icons";
+import type { ComponentType } from "react";
+import { LuCigarette, LuGlassWater, LuTag } from "react-icons/lu";
 import {
-  LuTrees,
-  LuCigarette,
-  LuBeer,
-  LuGlassWater,
-  LuUtensils,
-  LuMusic,
-  LuDog,
-  LuTag,
-} from "react-icons/lu";
+  BiergartenSolid,
+  PubMug,
+  ForkKnife,
+  Music,
+  Dog,
+} from "@/assets/icons";
 import type { AmenityKey } from "@/features/places/schemas";
 
-export { AMENITY_KEYS, AMENITY_OTHER_MAX, type AmenityKey } from "@/features/places/schemas";
+export { AMENITY_KEYS, type AmenityKey } from "@/features/places/schemas";
+
+type AmenityIcon = ComponentType<{
+  size?: number;
+  color?: string;
+  className?: string;
+}>;
 
 // labelKey resolves against the `guestCheck` translation namespace.
-export const AMENITY_CONFIG: Record<AmenityKey, { labelKey: string; Icon: IconType }> = {
-  outdoor_seating: { labelKey: "outdoor", Icon: LuTrees },
+export const AMENITY_CONFIG: Record<AmenityKey, { labelKey: string; Icon: AmenityIcon }> = {
+  outdoor_seating: { labelKey: "outdoor", Icon: BiergartenSolid },
   smoking_area: { labelKey: "smoking", Icon: LuCigarette },
-  great_beer_selection: { labelKey: "beerSelection", Icon: LuBeer },
+  great_beer_selection: { labelKey: "beerSelection", Icon: PubMug },
   lots_of_beers_on_tap: { labelKey: "beersOnTap", Icon: LuGlassWater },
-  serves_food: { labelKey: "servesFood", Icon: LuUtensils },
-  live_music: { labelKey: "liveMusic", Icon: LuMusic },
-  dog_friendly: { labelKey: "dogFriendly", Icon: LuDog },
+  serves_food: { labelKey: "servesFood", Icon: ForkKnife },
+  live_music: { labelKey: "liveMusic", Icon: Music },
+  dog_friendly: { labelKey: "dogFriendly", Icon: Dog },
 };
 
-export const OtherAmenityIcon: IconType = LuTag;
+export const OtherAmenityIcon: AmenityIcon = LuTag;

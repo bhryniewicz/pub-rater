@@ -1,7 +1,7 @@
 "use client";
 
-import { DAYS, DAY_LABELS as DEFAULT_DAY_LABELS } from "@/lib/form-opening-hours";
-import type { Day, DayState } from "@/lib/form-opening-hours";
+import { DAYS, DAY_LABELS as DEFAULT_DAY_LABELS } from "@/lib/opening-hours/form";
+import type { Day, DayState } from "@/lib/opening-hours/form";
 
 type Props = {
   days: Record<Day, DayState>;

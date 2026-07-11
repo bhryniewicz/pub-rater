@@ -2,10 +2,10 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, type Review } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import type { PlaceData } from "./get-place";
 import type { GuestCheckValues } from "@/features/places/components/rate-dialog";
-import type { MutationConfig } from "@/lib/react-query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type CreateReviewInput = GuestCheckValues & { userId: string; userEmail: string };
 

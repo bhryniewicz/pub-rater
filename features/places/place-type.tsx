@@ -1,25 +1,26 @@
 import {
-  PubLine,
+  PubMug,
   BarSolid,
   BiergartenSolid,
-  MixedSolid,
   HeartIcon,
   HomeIcon,
 } from "@/assets/icons";
+import { colorGradient } from "@/lib/color";
+import { CATEGORY_COLORS } from "@/lib/constants";
 import type { MapMarker } from "@/lib/supabase";
 
 const PLACE_TYPE_KEYS = ["pub", "bar", "biergarten", "sport"] as const;
 export type PlaceType = (typeof PLACE_TYPE_KEYS)[number];
 
 export const PLACE_TYPE_CONFIG = {
-  pub: { label: "Pub", color: "#d97706" },
-  bar: { label: "Bar", color: "#7c3aed" },
-  biergarten: { label: "Outdoor", color: "#16a34a" },
-  events: { label: "Events", color: "#f97316" },
-  topRated: { label: "Top rated", color: "#facc15" },
-  sport: { label: "Sport", color: "#16a34a" },
-  liked: { label: "Liked", color: "#db2777" },
-  owned: { label: "Owned", color: "#1d4ed8" },
+  pub: { label: "Pub", color: CATEGORY_COLORS.pub },
+  bar: { label: "Bar", color: CATEGORY_COLORS.bar },
+  biergarten: { label: "Outdoor", color: CATEGORY_COLORS.biergarten },
+  events: { label: "Events", color: CATEGORY_COLORS.events },
+  topRated: { label: "Top rated", color: CATEGORY_COLORS.topRated },
+  sport: { label: "Sport", color: CATEGORY_COLORS.sport },
+  liked: { label: "Liked", color: CATEGORY_COLORS.liked },
+  owned: { label: "Owned", color: CATEGORY_COLORS.owned },
 } as const;
 
 export type PlaceTypeKey = keyof typeof PLACE_TYPE_CONFIG;
@@ -42,21 +43,8 @@ export function placeTypeColor(placeType: string): string {
   return PLACE_TYPE_COLORS[placeType] ?? "#4b5563";
 }
 
-function lightenColor(hex: string, amount: number): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  const mix = (c: number) => Math.round(c + (255 - c) * amount);
-  const to2 = (n: number) => mix(n).toString(16).padStart(2, "0");
-  return `#${to2(r)}${to2(g)}${to2(b)}`;
-}
-
 export function placeTypeGradient(placeType: string): string {
-  const base = placeTypeColor(placeType);
-  const top = lightenColor(base, 0.12);
-  const bottom = lightenColor(base, 0.32);
-  return `linear-gradient(135deg, ${top}, ${bottom})`;
+  return colorGradient(placeTypeColor(placeType));
 }
 
 export function dominantPlaceType(pubs: MapMarker[]): string {
@@ -81,7 +69,7 @@ export function PlaceTypeIcon({
 }) {
   switch (placeType) {
     case "pub":
-      return <PubLine size={size} color={color} />;
+      return <PubMug size={size} color={color} />;
     case "bar":
       return <BarSolid size={size} color={color} />;
     case "biergarten":

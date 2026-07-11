@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { OpeningHoursSchema } from '@/features/places/schemas'
+import { OpeningHoursSchema } from '@/schemas'
 
 export const LocationRequestStatus = z.enum(['pending', 'approved', 'rejected', 'need_more_info'])
 

@@ -8,7 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import type { MapMarker } from "@/lib/supabase";
 import { getMarkersQueryOptions } from "@/features/markers/api/get-markers";
 import { useSearch } from "@/context/search-context";
-import { useFilters, VOIVODESHIPS } from "@/context/filter-context";
+import { useFilters } from "@/context/filter-context";
+import { VOIVODESHIPS } from "@/lib/constants";
+import { type Filters, DEFAULT_FILTERS } from "@/features/places/filters";
 import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
 import { useOwnedMarkers } from "@/features/markers/api/get-owned-markers";
@@ -54,38 +56,15 @@ export function SearchBar() {
   }
 
   // Pending (staged) filter state — only applied when "Show places" is clicked
-  const [pendingCategoryFilter, setPendingCategoryFilter] = useState<string[]>([]);
-  const [pendingFilterActive, setPendingFilterActive] = useState(false);
-  const [pendingLikedFilterActive, setPendingLikedFilterActive] = useState(false);
-  const [pendingOwnedFilterActive, setPendingOwnedFilterActive] = useState(false);
-  const [pendingOpenFilterActive, setPendingOpenFilterActive] = useState(false);
-  const [pendingOpenLateFilterActive, setPendingOpenLateFilterActive] = useState(false);
-  const [pendingMinRatingFilter, setPendingMinRatingFilter] = useState<number | null>(null);
-  const [pendingVoivodeshipFilter, setPendingVoivodeshipFilter] = useState<string | null>(null);
-  const [pendingRadiusFilter, setPendingRadiusFilter] = useState<number | null>(null);
+  const [pending, setPending] = useState<Filters>(DEFAULT_FILTERS);
+
+  function setPendingFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+    setPending((prev) => ({ ...prev, [key]: value }));
+  }
 
   const { searchQuery, searchSelectedId, setSearchQuery, setSearchSelectedId, clearSearch } =
     useSearch();
-  const {
-    categoryFilter,
-    setCategoryFilter,
-    filterActive,
-    setFilterActive,
-    likedFilterActive,
-    setLikedFilterActive,
-    ownedFilterActive,
-    setOwnedFilterActive,
-    openFilterActive,
-    setOpenFilterActive,
-    openLateFilterActive,
-    setOpenLateFilterActive,
-    minRatingFilter,
-    setMinRatingFilter,
-    voivodeshipFilter,
-    setVoivodeshipFilter,
-    radiusFilter,
-    setRadiusFilter,
-  } = useFilters();
+  const { filters, setFilters } = useFilters();
   const { status: geoStatus, coords: geoCoords, enable: enableGeo } = useGeolocation();
   const { user, profile } = useUser();
   const { data: ownedIds = null } = useOwnedMarkers(
@@ -97,17 +76,7 @@ export function SearchBar() {
 
   // Sync pending state from applied context when panel opens
   useEffect(() => {
-    if (filtersOpen) {
-      setPendingCategoryFilter(categoryFilter);
-      setPendingFilterActive(filterActive);
-      setPendingLikedFilterActive(likedFilterActive);
-      setPendingOwnedFilterActive(ownedFilterActive);
-      setPendingOpenFilterActive(openFilterActive);
-      setPendingOpenLateFilterActive(openLateFilterActive);
-      setPendingMinRatingFilter(minRatingFilter);
-      setPendingVoivodeshipFilter(voivodeshipFilter);
-      setPendingRadiusFilter(radiusFilter);
-    }
+    if (filtersOpen) setPending(filters);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersOpen]);
 
@@ -149,24 +118,23 @@ export function SearchBar() {
 
   function toggleCategory(type: string) {
     if (type === "liked") {
-      setPendingCategoryFilter([]);
-      setPendingOwnedFilterActive(false);
-      setPendingLikedFilterActive((v) => !v);
+      setPending((p) => ({ ...p, categories: [], owned: false, liked: !p.liked }));
     } else if (type === "owned") {
-      setPendingCategoryFilter([]);
-      setPendingLikedFilterActive(false);
-      setPendingOwnedFilterActive((v) => !v);
+      setPending((p) => ({ ...p, categories: [], liked: false, owned: !p.owned }));
     } else {
-      setPendingLikedFilterActive(false);
-      setPendingOwnedFilterActive(false);
-      setPendingCategoryFilter((prev) => (!prev.includes(type) ? [type] : []));
+      setPending((p) => ({
+        ...p,
+        liked: false,
+        owned: false,
+        categories: !p.categories.includes(type) ? [type] : [],
+      }));
     }
   }
 
   const pendingActiveTypes = [
-    ...pendingCategoryFilter,
-    ...(pendingLikedFilterActive ? ["liked"] : []),
-    ...(pendingOwnedFilterActive ? ["owned"] : []),
+    ...pending.categories,
+    ...(pending.liked ? ["liked"] : []),
+    ...(pending.owned ? ["owned"] : []),
   ];
 
   function normalizedQuery() {
@@ -208,27 +176,11 @@ export function SearchBar() {
   }
 
   function clearPendingFilters() {
-    setPendingFilterActive(false);
-    setPendingLikedFilterActive(false);
-    setPendingOwnedFilterActive(false);
-    setPendingCategoryFilter([]);
-    setPendingMinRatingFilter(null);
-    setPendingOpenFilterActive(false);
-    setPendingOpenLateFilterActive(false);
-    setPendingVoivodeshipFilter(null);
-    setPendingRadiusFilter(null);
+    setPending(DEFAULT_FILTERS);
   }
 
   function handleApplyFilters() {
-    setCategoryFilter(pendingCategoryFilter);
-    setFilterActive(pendingFilterActive);
-    setLikedFilterActive(pendingLikedFilterActive);
-    setOwnedFilterActive(pendingOwnedFilterActive);
-    setOpenFilterActive(pendingOpenFilterActive);
-    setOpenLateFilterActive(pendingOpenLateFilterActive);
-    setMinRatingFilter(pendingMinRatingFilter);
-    setVoivodeshipFilter(pendingVoivodeshipFilter);
-    setRadiusFilter(pendingRadiusFilter);
+    setFilters(pending);
     setFiltersOpen(false);
   }
 
@@ -248,26 +200,26 @@ export function SearchBar() {
   const isActive = !!searchQuery || !!searchSelectedId;
   // hasActiveFilters reflects *applied* filters (context), not pending
   const hasActiveFilters =
-    filterActive ||
-    likedFilterActive ||
-    ownedFilterActive ||
-    !!voivodeshipFilter ||
-    categoryFilter.length > 0 ||
-    radiusFilter !== null ||
-    minRatingFilter !== null ||
-    openFilterActive ||
-    openLateFilterActive;
+    filters.usePreferences ||
+    filters.liked ||
+    filters.owned ||
+    !!filters.voivodeship ||
+    filters.categories.length > 0 ||
+    filters.radius !== null ||
+    filters.minRating !== null ||
+    filters.open ||
+    filters.openLate;
 
   return (
     <div ref={containerRef} className="relative w-full">
       <div
-        className={`flex items-center gap-2 px-4 h-11 rounded-xl border text-sm transition-colors ${
+        className={`flex items-center gap-2 px-4 h-11 rounded-xl border text-sm transition-colors focus-within:border-primary ${
           isActive
             ? "bg-primary/10 border-primary/50 text-foreground"
-            : "bg-input border-border text-foreground"
+            : "bg-card border-primary/50 shadow-[0_0_16px_-6px_rgba(217,119,6,0.4)] text-foreground"
         }`}
       >
-        <LuSearch className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+        <LuSearch className="w-3.5 h-3.5 shrink-0 text-primary" />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -441,9 +393,9 @@ export function SearchBar() {
                     {RATING_OPTIONS.map(({ label, value }) => (
                       <button
                         key={label}
-                        onClick={() => setPendingMinRatingFilter(value)}
+                        onClick={() => setPendingFilter("minRating", value)}
                         className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
-                          pendingMinRatingFilter === value
+                          pending.minRating === value
                             ? "bg-secondary border-foreground/20 text-foreground"
                             : "border-border text-muted-foreground hover:border-foreground/20"
                         }`}
@@ -473,13 +425,13 @@ export function SearchBar() {
                   <div className="flex flex-col gap-2">
                     <div
                       className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
-                        pendingOpenFilterActive ? "bg-secondary border-foreground/20" : "border-border"
+                        pending.open ? "bg-secondary border-foreground/20" : "border-border"
                       }`}
                     >
                       <div>
                         <p
                           className={`text-sm font-medium ${
-                            pendingOpenFilterActive ? "text-open" : "text-foreground"
+                            pending.open ? "text-open" : "text-foreground"
                           }`}
                         >
                           {t("openNow")}
@@ -489,20 +441,20 @@ export function SearchBar() {
                         </p>
                       </div>
                       <Switch
-                        checked={pendingOpenFilterActive}
-                        onCheckedChange={() => setPendingOpenFilterActive((v) => !v)}
+                        checked={pending.open}
+                        onCheckedChange={() => setPendingFilter("open", !pending.open)}
                         className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
                       />
                     </div>
                     <div
                       className={`flex items-center justify-between px-3 py-3 rounded-xl border transition-colors ${
-                        pendingOpenLateFilterActive ? "bg-secondary border-foreground/20" : "border-border"
+                        pending.openLate ? "bg-secondary border-foreground/20" : "border-border"
                       }`}
                     >
                       <div>
                         <p
                           className={`text-sm font-medium ${
-                            pendingOpenLateFilterActive ? "text-open" : "text-foreground"
+                            pending.openLate ? "text-open" : "text-foreground"
                           }`}
                         >
                           {t("openLate")}
@@ -512,8 +464,8 @@ export function SearchBar() {
                         </p>
                       </div>
                       <Switch
-                        checked={pendingOpenLateFilterActive}
-                        onCheckedChange={() => setPendingOpenLateFilterActive((v) => !v)}
+                        checked={pending.openLate}
+                        onCheckedChange={() => setPendingFilter("openLate", !pending.openLate)}
                         className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
                       />
                     </div>
@@ -538,8 +490,8 @@ export function SearchBar() {
                   {!collapsedSections.location && (
                   <div className="flex flex-col gap-3">
                     <select
-                      value={pendingVoivodeshipFilter ?? ""}
-                      onChange={(e) => setPendingVoivodeshipFilter(e.target.value || null)}
+                      value={pending.voivodeship ?? ""}
+                      onChange={(e) => setPendingFilter("voivodeship", e.target.value || null)}
                       className="w-full bg-input border border-border text-foreground text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-ring appearance-none cursor-pointer"
                     >
                       <option value="">{t("allVoivodeships")}</option>
@@ -553,16 +505,16 @@ export function SearchBar() {
                       <button
                         onClick={() => {
                           if (geoStatus === "denied" || geoStatus === "unavailable") return;
-                          if (pendingRadiusFilter !== null) {
-                            setPendingRadiusFilter(null);
+                          if (pending.radius !== null) {
+                            setPendingFilter("radius", null);
                           } else {
                             if (geoStatus === "idle") enableGeo();
-                            setPendingRadiusFilter(1);
+                            setPendingFilter("radius", 1);
                           }
                         }}
                         disabled={geoStatus === "denied" || geoStatus === "unavailable"}
                         className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          pendingRadiusFilter !== null
+                          pending.radius !== null
                             ? "bg-secondary border-foreground/20 text-foreground"
                             : "border-border text-muted-foreground hover:border-foreground/20"
                         }`}
@@ -570,10 +522,10 @@ export function SearchBar() {
                         <LuCrosshair size={14} />
                         {geoStatus === "loading" ? t("locating") : t("nearMe")}
                       </button>
-                      {pendingRadiusFilter !== null && geoCoords && (
+                      {pending.radius !== null && geoCoords && (
                         <select
-                          value={pendingRadiusFilter}
-                          onChange={(e) => setPendingRadiusFilter(Number(e.target.value))}
+                          value={pending.radius}
+                          onChange={(e) => setPendingFilter("radius", Number(e.target.value))}
                           className="flex-1 bg-input border border-border text-foreground text-sm rounded-full px-4 py-2.5 focus:outline-none focus:border-ring"
                         >
                           <option value="0.1">0.1 km</option>

@@ -19,7 +19,11 @@ import { useGeolocation } from "@/context/geolocation-context";
 import { useUser } from "@/features/profile/api/get-user";
 import { BeerRating } from "@/components/beer-rating";
 import { CountBadge } from "@/components/ui/count-badge";
-import { PlaceTypeIcon, placeTypeColor } from "@/features/places/place-type";
+import {
+  PlaceTypeIcon,
+  placeTypeColor,
+  placeTypeGradient,
+} from "@/features/places/place-type";
 import {
   clusterPlaces,
   placesToGeoJSON,
@@ -237,8 +241,8 @@ export default function MapComponent({ markers, focusedMarker }: Props) {
       {clusters.map((item, i) => {
         if (item.type !== "cluster") return null;
         const label = item.count > 99 ? "99+" : `${item.count}`;
-        const bg = placeTypeColor(item.dominantPlaceType);
-        const shadowColor = bg;
+        const bg = placeTypeGradient(item.dominantPlaceType);
+        const shadowColor = placeTypeColor(item.dominantPlaceType);
         const { minLon, minLat, maxLon, maxLat } = item.bounds;
         return (
           <Marker

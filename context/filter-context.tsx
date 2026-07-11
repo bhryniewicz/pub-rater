@@ -1,96 +1,41 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
+import { type Filters, DEFAULT_FILTERS } from "@/features/places/filters";
 
-export const VOIVODESHIPS: { key: string; label: string }[] = [
-  { key: "Dolnoslaskie", label: "Dolnośląskie" },
-  { key: "Kujawsko-Pomorskie", label: "Kujawsko-Pomorskie" },
-  { key: "Lubelskie", label: "Lubelskie" },
-  { key: "Lubuskie", label: "Lubuskie" },
-  { key: "Lodzkie", label: "Łódzkie" },
-  { key: "Malopolskie", label: "Małopolskie" },
-  { key: "Mazowieckie", label: "Mazowieckie" },
-  { key: "Opolskie", label: "Opolskie" },
-  { key: "Podkarpackie", label: "Podkarpackie" },
-  { key: "Podlaskie", label: "Podlaskie" },
-  { key: "Pomorskie", label: "Pomorskie" },
-  { key: "Slaskie", label: "Śląskie" },
-  { key: "Swietokrzyskie", label: "Świętokrzyskie" },
-  { key: "Warminsko-Mazurskie", label: "Warmińsko-Mazurskie" },
-  { key: "Wielkopolskie", label: "Wielkopolskie" },
-  { key: "Zachodniopomorskie", label: "Zachodniopomorskie" },
-];
+type SetFilter = <K extends keyof Filters>(
+  key: K,
+  value: Filters[K] | ((prev: Filters[K]) => Filters[K]),
+) => void;
 
 type FilterState = {
-  categoryFilter: string[];
-  setCategoryFilter: (v: string[] | ((prev: string[]) => string[])) => void;
-  filterActive: boolean;
-  setFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
-  likedFilterActive: boolean;
-  setLikedFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
-  ownedFilterActive: boolean;
-  setOwnedFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
-  openFilterActive: boolean;
-  setOpenFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
-  openLateFilterActive: boolean;
-  setOpenLateFilterActive: (v: boolean | ((prev: boolean) => boolean)) => void;
-  minRatingFilter: number | null;
-  setMinRatingFilter: (v: number | null) => void;
-  voivodeshipFilter: string | null;
-  setVoivodeshipFilter: (v: string | null) => void;
-  radiusFilter: number | null;
-  setRadiusFilter: (v: number | null) => void;
+  filters: Filters;
+  setFilter: SetFilter;
+  setFilters: (v: Filters) => void;
   resetFilters: () => void;
 };
 
 const FilterContext = createContext<FilterState | null>(null);
 
 export function FilterProvider({ children }: { children: React.ReactNode }) {
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
-  const [filterActive, setFilterActive] = useState(false);
-  const [likedFilterActive, setLikedFilterActive] = useState(false);
-  const [ownedFilterActive, setOwnedFilterActive] = useState(false);
-  const [openFilterActive, setOpenFilterActive] = useState(false);
-  const [openLateFilterActive, setOpenLateFilterActive] = useState(false);
-  const [minRatingFilter, setMinRatingFilter] = useState<number | null>(null);
-  const [voivodeshipFilter, setVoivodeshipFilter] = useState<string | null>(null);
-  const [radiusFilter, setRadiusFilter] = useState<number | null>(null);
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
 
-  function resetFilters() {
-    setCategoryFilter([]);
-    setFilterActive(false);
-    setLikedFilterActive(false);
-    setOwnedFilterActive(false);
-    setOpenFilterActive(false);
-    setOpenLateFilterActive(false);
-    setMinRatingFilter(null);
-    setVoivodeshipFilter(null);
-    setRadiusFilter(null);
-  }
+  const setFilter: SetFilter = (key, value) =>
+    setFilters((prev) => ({
+      ...prev,
+      [key]:
+        typeof value === "function"
+          ? (value as (p: Filters[typeof key]) => Filters[typeof key])(
+              prev[key],
+            )
+          : value,
+    }));
+
+  const resetFilters = () => setFilters(DEFAULT_FILTERS);
 
   return (
     <FilterContext.Provider
-      value={{
-        categoryFilter,
-        setCategoryFilter,
-        filterActive,
-        setFilterActive,
-        likedFilterActive,
-        setLikedFilterActive,
-        ownedFilterActive,
-        setOwnedFilterActive,
-        openFilterActive,
-        setOpenFilterActive,
-        openLateFilterActive,
-        setOpenLateFilterActive,
-        minRatingFilter,
-        setMinRatingFilter,
-        voivodeshipFilter,
-        setVoivodeshipFilter,
-        radiusFilter,
-        setRadiusFilter,
-        resetFilters,
-      }}
+      value={{ filters, setFilter, setFilters, resetFilters }}
     >
       {children}
     </FilterContext.Provider>

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { ReviewActionSchema, type OwnerClaim } from "@/features/requests/schemas";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { useOwnerClaims } from "@/features/admin/api/get-owner-claims";
 import { useApproveOwnerClaim, useRejectOwnerClaim, useRequestMoreInfoOwnerClaim } from "@/features/admin/api/review-owner-claim";
 import { LuCheck, LuX, LuArrowLeft, LuInfo } from "react-icons/lu";

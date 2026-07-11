@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { ReviewActionSchema, type PlaceRequest } from "@/features/requests/schemas";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { usePlaceRequests } from "@/features/admin/api/get-place-requests";
 import { useApprovePlaceRequest, useRejectPlaceRequest, useRequestMoreInfoPlaceRequest } from "@/features/admin/api/review-place-request";
 import dynamic from "next/dynamic";

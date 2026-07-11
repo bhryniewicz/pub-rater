@@ -4,8 +4,8 @@ import {
   HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { QUERY_KEYS } from "@/lib/query";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { fetchPlaceTypeCounts } from "@/features/markers/api/get-place-type-counts";
 import HomeContent from "./_components/home-content";
 

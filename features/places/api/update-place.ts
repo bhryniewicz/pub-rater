@@ -2,9 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { editPlace } from "@/features/places/api/edit-place.action";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import type { EditPlaceValues } from "@/features/places/schemas";
-import type { MutationConfig } from "@/lib/react-query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseUpdatePlaceOptions = {
   mutationConfig?: MutationConfig<(values: EditPlaceValues) => ReturnType<typeof editPlace>>;

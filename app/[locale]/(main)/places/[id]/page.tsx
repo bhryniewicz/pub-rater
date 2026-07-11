@@ -1,5 +1,5 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { fetchPlaceData, getPlaceQueryOptions } from "@/features/places/api/get-place";
 import { PlaceDetail } from "./_components/place-detail";
 

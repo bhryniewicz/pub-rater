@@ -2,7 +2,7 @@
 
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 
 async function fetchOwnedMarkers(userId: string): Promise<string[]> {
   const { data } = await supabase

@@ -10,8 +10,8 @@ import { SearchProvider } from "@/context/search-context";
 import { FilterProvider } from "@/context/filter-context";
 import { PostHogProvider } from "posthog-js/react";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import { posthog } from "@/lib/posthog";
+import { QUERY_KEYS } from "@/lib/query";
+import { posthog } from "@/lib/analytics/posthog";
 
 function AuthSync() {
   const queryClient = useQueryClient();

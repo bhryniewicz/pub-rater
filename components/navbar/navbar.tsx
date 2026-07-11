@@ -21,6 +21,7 @@ import {
   LuMoon,
   LuMenu,
   LuMapPin,
+  LuPlus,
   LuLayoutDashboard,
   LuLogIn,
   LuLogOut,
@@ -213,7 +214,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
 
   return (
     <>
-      <header className="relative z-50 px-4 md:px-12 bg-background shrink-0">
+      <header className="relative z-50 px-4 md:px-12 bg-transparent shrink-0">
         <div className="flex items-center gap-2 py-6 relative">
           <div className="h-12 flex items-center shrink-0">
             <Link
@@ -252,8 +253,9 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
               (!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
                 <button
                   onClick={() => setAddPlaceOpen(true)}
-                  className="hidden md:inline-flex h-11 items-center text-sm font-medium text-muted-foreground border border-border rounded-lg px-3 hover:text-foreground hover:border-foreground/40 transition-colors"
+                  className="hidden md:inline-flex h-10 items-center gap-1.5 text-xs font-medium text-foreground border border-primary/40 rounded-lg px-3 hover:border-primary transition-colors"
                 >
+                  <LuPlus size={15} className="text-primary" />
                   {t("addPlace")}
                 </button>
               )}
@@ -263,7 +265,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
               <motion.button
                 aria-label={t("notifications")}
                 whileTap={{ scale: 0.88 }}
-                className="relative h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
+                className="relative h-10 w-10 flex items-center justify-center text-primary hover:text-primary border border-primary/40 rounded-lg hover:border-primary transition-colors"
               >
                 <LuBell size={20} />
                 {notificationCount > 0 && (
@@ -279,7 +281,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={t("openMenu")}
               whileTap={{ scale: 0.88 }}
-              className="h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors"
+              className="h-10 w-10 flex items-center justify-center text-primary hover:text-primary border border-primary/40 rounded-lg hover:border-primary transition-colors"
             >
               <LuMenu size={20} />
             </motion.button>

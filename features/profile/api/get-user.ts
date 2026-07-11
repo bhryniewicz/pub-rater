@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { QUERY_KEYS } from '@/lib/query-keys'
+import { QUERY_KEYS } from '@/lib/query'
 import type { ProfilePreferences } from '@/features/profile/schemas'
 
 export type UserProfile = {

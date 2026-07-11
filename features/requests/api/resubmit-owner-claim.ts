@@ -2,8 +2,8 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { resubmitOwnerClaim } from "@/features/requests/api/resubmit-owner-claim.action";
-import { QUERY_KEYS } from "@/lib/query-keys";
-import type { MutationConfig } from "@/lib/react-query";
+import { QUERY_KEYS } from "@/lib/query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseResubmitOwnerClaimOptions = {
   mutationConfig?: MutationConfig<typeof resubmitOwnerClaim>;

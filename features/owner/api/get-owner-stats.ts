@@ -2,9 +2,9 @@
 
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { isOpenNow } from "@/lib/opening-hours";
-import type { OpeningHours } from "@/features/places/schemas";
+import type { OpeningHours } from "@/schemas";
 
 export type OwnedPlaceStat = {
   id: string;

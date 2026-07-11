@@ -3,9 +3,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/features/profile/api/get-user";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import type { UserData } from "@/features/profile/api/get-user";
-import type { MutationConfig } from "@/lib/react-query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type UseLikePlaceOptions = {
   mutationConfig?: MutationConfig<(placeId: string) => Promise<string[]>>;

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getUser } from "@/lib/supabase/auth";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/features/profile/components/profile-form";
 
 export default async function ProfilePage() {

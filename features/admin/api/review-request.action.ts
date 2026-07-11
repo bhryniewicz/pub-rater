@@ -1,7 +1,7 @@
 'use server'
 
-import { getIsAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getIsAdmin } from '@/lib/supabase/auth'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function approveRequest(id: string): Promise<void> {
   if (!(await getIsAdmin())) throw new Error('Forbidden')

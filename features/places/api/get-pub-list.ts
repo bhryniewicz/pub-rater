@@ -2,31 +2,26 @@ import {
   infiniteQueryOptions,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase, type PubListItem } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import { useUser } from "@/features/profile/api/get-user";
-import { useGeolocation } from "@/context/geolocation-context";
-import { useFilters } from "@/context/filter-context";
 import { useSearch } from "@/context/search-context";
-
-export const PUB_LIST_PAGE_SIZE = 20;
+import {
+  type Filters,
+  type FilterEnv,
+  DEFAULT_FILTERS,
+  DEFAULT_FILTER_ENV,
+  FILTER_DEFS,
+} from "@/features/places/filters";
+import { PUB_LIST_PAGE_SIZE } from "@/lib/constants";
 
 export type QueryParams = {
   searchSelectedId: string | null;
   searchQuery: string;
-  placeTypeFilter: string[];
-  likedFilterActive: boolean;
-  likedIds: string[];
-  ownedFilterActive: boolean;
-  ownedIds: string[] | null;
-  minRatingFilter: number | null;
-  // null = filter not active (don't apply), [] = active but no matches (return empty)
-  openIds: string[] | null;
-  openLateIds: string[] | null;
-  nearbyIds: string[] | null;
-  voivodeshipIds: string[] | null;
+  env: FilterEnv;
+  // ID lists for active marker-derived filters, keyed by FILTER_DEFS id.
+  markerIds: Record<string, string[]>;
 };
 
 export async function fetchPubListPage(
@@ -40,41 +35,13 @@ export async function fetchPubListPage(
   if (p.searchSelectedId) {
     query = query.eq("id", p.searchSelectedId);
   } else {
-    if (p.searchQuery) {
-      query = query.ilike("name", `%${p.searchQuery}%`);
+    if (p.searchQuery) query = query.ilike("name", `%${p.searchQuery}%`);
+    for (const def of FILTER_DEFS) {
+      if (!def.isActive(p.env)) continue;
+      const next = def.toQuery(query, p.env, p.markerIds[def.id]);
+      if (next === null) return empty;
+      query = next;
     }
-    if (p.likedFilterActive) {
-      if (p.likedIds.length === 0) return empty;
-      query = query.in("id", p.likedIds);
-    }
-    if (p.ownedFilterActive) {
-      const ids = p.ownedIds ?? [];
-      if (ids.length === 0) return empty;
-      query = query.in("id", ids);
-    }
-    if (p.placeTypeFilter.length > 0) {
-      query = query.in("place_type", p.placeTypeFilter);
-    }
-    if (p.voivodeshipIds !== null) {
-      if (p.voivodeshipIds.length === 0) return empty;
-      query = query.in("id", p.voivodeshipIds);
-    }
-  }
-
-  if (p.openIds !== null) {
-    if (p.openIds.length === 0) return empty;
-    query = query.in("id", p.openIds);
-  }
-  if (p.openLateIds !== null) {
-    if (p.openLateIds.length === 0) return empty;
-    query = query.in("id", p.openLateIds);
-  }
-  if (p.nearbyIds !== null) {
-    if (p.nearbyIds.length === 0) return empty;
-    query = query.in("id", p.nearbyIds);
-  }
-  if (p.minRatingFilter !== null) {
-    query = query.gte("app_rating", p.minRatingFilter);
   }
 
   query = query
@@ -96,30 +63,15 @@ export async function fetchPubListPage(
 }
 
 export function toQueryKey(
-  categoryFilter: string[],
-  filterActive: boolean,
-  likedFilterActive: boolean,
-  ownedFilterActive: boolean,
-  openFilterActive: boolean,
-  openLateFilterActive: boolean,
-  minRatingFilter: number | null,
-  voivodeshipFilter: string | null,
-  radiusFilter: number | null,
+  filters: Filters,
   searchQuery: string,
   searchSelectedId: string | null,
   userLat: number | null,
   userLon: number | null,
 ) {
   return {
-    categoryFilter: [...categoryFilter].sort(),
-    filterActive,
-    likedFilterActive,
-    ownedFilterActive,
-    openFilterActive,
-    openLateFilterActive,
-    minRatingFilter,
-    voivodeshipFilter,
-    radiusFilter,
+    ...filters,
+    categories: [...filters.categories].sort(),
     searchQuery,
     searchSelectedId,
     userLat: userLat !== null ? Math.round(userLat * 100) / 100 : null,
@@ -147,112 +99,57 @@ export function getPubListInfiniteQueryOptions(
 export const DEFAULT_PUB_LIST_PARAMS: QueryParams = {
   searchSelectedId: null,
   searchQuery: "",
-  placeTypeFilter: [],
-  likedFilterActive: false,
-  likedIds: [],
-  ownedFilterActive: false,
-  ownedIds: null,
-  minRatingFilter: null,
-  openIds: null,
-  openLateIds: null,
-  nearbyIds: null,
-  voivodeshipIds: null,
+  env: DEFAULT_FILTER_ENV,
+  markerIds: {},
 };
 
 export const DEFAULT_PUB_LIST_QUERY_KEY = [
   QUERY_KEYS.PUB_LIST,
-  toQueryKey([], false, false, false, false, false, null, null, null, "", null, null, null),
+  toQueryKey(DEFAULT_FILTERS, "", null, null, null),
 ] as const;
 
-// Marker-derived filter inputs supplied by the caller (from the markers
-// feature). This hook has no knowledge of markers — it only builds the list query.
-export type PubListMarkerFilters = {
+// Marker-derived data supplied by the caller (the markers feature). This hook
+// has no knowledge of markers — it only builds the list query from the
+// resolved FilterEnv and the precomputed ID lists.
+export type PubListMarkerData = {
   markersReady: boolean;
-  ownedIds: string[] | null;
-  openIds: string[] | null;
-  openLateIds: string[] | null;
-  nearbyIds: string[] | null;
-  voivodeshipIds: string[] | null;
+  ownedLoaded: boolean;
+  env: FilterEnv;
+  markerIds: Record<string, string[]>;
 };
 
 export function usePubList({
   markersReady,
-  ownedIds,
-  openIds,
-  openLateIds,
-  nearbyIds,
-  voivodeshipIds,
-}: PubListMarkerFilters) {
+  ownedLoaded,
+  env,
+  markerIds,
+}: PubListMarkerData) {
   const { user, profile } = useUser();
-  const { coords: userLocation } = useGeolocation();
   const { searchQuery, searchSelectedId } = useSearch();
-  const {
-    categoryFilter,
-    filterActive,
-    likedFilterActive,
-    ownedFilterActive,
-    openFilterActive,
-    openLateFilterActive,
-    minRatingFilter,
-    voivodeshipFilter,
-    radiusFilter,
-  } = useFilters();
 
-  const likedPlaces = useMemo(
-    () => profile?.liked_places ?? [],
-    [profile?.liked_places],
+  // Marker-derived filters need the marker payload loaded, else the list would
+  // briefly return empty.
+  const needsMarkers = FILTER_DEFS.some(
+    (d) => d.derivesIds && d.isActive(env),
   );
-
-  const placeTypeFilter = useMemo(() => {
-    if (categoryFilter.length > 0) return categoryFilter;
-    if (!filterActive || !profile?.preferences) return [];
-    const allowed: string[] = [];
-    if (profile.preferences.pub_preference) allowed.push("pub");
-    if (profile.preferences.bar_preference) allowed.push("bar");
-    return allowed;
-  }, [categoryFilter, filterActive, profile?.preferences]);
-
-  // Filters whose ID lists are derived client-side from the marker payload —
-  // the list query must wait for markers to load, else it would briefly return empty.
-  const needsMarkers =
-    openFilterActive ||
-    openLateFilterActive ||
-    radiusFilter !== null ||
-    voivodeshipFilter !== null;
 
   const enabled =
     (!needsMarkers || markersReady) &&
-    (!likedFilterActive || !user || !!profile) &&
-    (!ownedFilterActive || ownedIds !== null);
+    (!env.filters.liked || !user || !!profile) &&
+    (!env.filters.owned || ownedLoaded);
 
-  const userLat = userLocation?.lat ?? null;
-  const userLon = userLocation?.lon ?? null;
+  const userLat = env.userLocation?.lat ?? null;
+  const userLon = env.userLocation?.lon ?? null;
 
   const queryParams: QueryParams = {
     searchSelectedId,
     searchQuery,
-    placeTypeFilter,
-    likedFilterActive,
-    likedIds: likedPlaces,
-    ownedFilterActive,
-    ownedIds,
-    minRatingFilter,
-    openIds,
-    openLateIds,
-    nearbyIds,
-    voivodeshipIds,
+    env,
+    markerIds,
   };
 
   const keyParams = toQueryKey(
-    categoryFilter,
-    filterActive,
-    likedFilterActive,
-    ownedFilterActive,
-    openFilterActive,
-    openLateFilterActive,
-    minRatingFilter,
-    voivodeshipFilter,
-    radiusFilter,
+    env.filters,
     searchQuery,
     searchSelectedId,
     userLat,

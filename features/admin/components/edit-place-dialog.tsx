@@ -9,8 +9,8 @@ import { EditPlaceSchema, type EditPlaceValues, type AmenityKey } from "@/featur
 import {
   AMENITY_KEYS,
   AMENITY_CONFIG,
-  AMENITY_OTHER_MAX,
 } from "@/features/places/amenities";
+import { AMENITY_OTHER_MAX } from "@/lib/constants";
 import type { Place } from "@/lib/supabase";
 import { useUpdatePlace } from "@/features/places/api/update-place";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
   hoursToState,
   stateToHours,
   DAY_LABELS,
-} from "@/lib/form-opening-hours";
+} from "@/lib/opening-hours/form";
 
 type Props = {
   open: boolean;

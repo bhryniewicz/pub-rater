@@ -1,6 +1,7 @@
 import type { MapMarker } from "@/lib/supabase";
 
 import { dominantPlaceType } from "@/features/places/place-type";
+import { CLUSTER_THRESHOLD, SPLIT_ZOOM, LARGE_CLUSTER } from "@/lib/constants";
 
 type PlaceFeatureCollection = {
   type: "FeatureCollection";
@@ -10,13 +11,6 @@ type PlaceFeatureCollection = {
     properties: { id: string; place_type: string; name: string };
   }>;
 };
-
-// Above this zoom: individual markers
-export const CLUSTER_THRESHOLD = 14;
-// At this zoom and above: split 100+ clusters into 2 geographic halves
-export const SPLIT_ZOOM = 9;
-// Cluster with this many places triggers a geographic split
-export const LARGE_CLUSTER = 100;
 
 function gridSizeForZoom(zoom: number): number {
   return 0.4 / Math.pow(2, zoom - 6);

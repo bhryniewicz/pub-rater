@@ -4,7 +4,11 @@ import { memo } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { type PubListItem as PubListItemType } from "@/lib/supabase";
-import { isOpenNow, getCloseTimeToday } from "@/lib/opening-hours";
+import {
+  isOpenNow,
+  getCloseTimeToday,
+  minutesUntilClose,
+} from "@/lib/opening-hours";
 import Image from "next/image";
 import { IoLocationSharp } from "react-icons/io5";
 import { LuMap } from "react-icons/lu";
@@ -91,6 +95,10 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
   const closeTime = marker.opening_hours
     ? getCloseTimeToday(marker.opening_hours)
     : null;
+  const minsToClose = marker.opening_hours
+    ? minutesUntilClose(marker.opening_hours)
+    : null;
+  const closingSoon = minsToClose !== null && minsToClose <= 60;
 
   return (
     <motion.li
@@ -147,7 +155,12 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
 
         {/* Mobile bottom-left: open/close status */}
         <div className="md:hidden absolute bottom-3 left-3">
-          <OpenStatus openNow={openNow} closeTime={closeTime} variant="badge" />
+          <OpenStatus
+            openNow={openNow}
+            closeTime={closeTime}
+            closingSoon={closingSoon}
+            variant="badge"
+          />
         </div>
       </div>
 
@@ -158,7 +171,7 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
           onClick={() => analytics.pubCardOpened(marker)}
           className="flex flex-col gap-2.5 p-4 md:p-0 md:py-1 flex-1 min-w-0"
         >
-          <p className="pub-name font-mono font-extrabold text-base md:text-base uppercase tracking-wider text-foreground leading-tight truncate">
+          <p className="pub-name font-mono font-semibold text-base md:text-base uppercase tracking-wider text-foreground leading-tight truncate">
             {marker.name}
           </p>
 
@@ -206,13 +219,14 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
               <OpenStatus
                 openNow={openNow}
                 closeTime={closeTime}
+                closingSoon={closingSoon}
                 variant="inline"
               />
             </span>
           </p>
 
           <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto md:mt-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-bold text-[10px] uppercase tracking-[0.15em]">
+            <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-semibold text-[9px] uppercase tracking-[0.15em]">
               <PlaceTypeIcon placeType={marker.place_type} size={12} />
               {marker.place_type}
             </span>
@@ -223,7 +237,7 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
               return (
                 <span
                   key={key}
-                  className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-bold text-[10px] uppercase tracking-[0.15em]"
+                  className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-semibold text-[9px] uppercase tracking-[0.15em]"
                 >
                   <Icon size={12} />
                   {tGC(labelKey)}
@@ -231,7 +245,7 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
               );
             })}
             {marker.amenity_other && (
-              <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-bold text-[10px] uppercase tracking-[0.15em]">
+              <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary dark:bg-primary/20 text-foreground dark:text-white font-mono font-semibold text-[9px] uppercase tracking-[0.15em]">
                 <OtherAmenityIcon size={12} />
                 {marker.amenity_other}
               </span>

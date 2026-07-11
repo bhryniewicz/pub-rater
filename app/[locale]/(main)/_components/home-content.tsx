@@ -73,7 +73,7 @@ export default function HomeContent() {
       <AmenityFilterBar />
       <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-2 overflow-hidden">
         <div
-          className={`min-h-0 px-4 md:pl-12 md:pr-0 overflow-hidden bg-background ${mobileView === "map" ? "hidden md:block" : "flex-1 md:flex-none"}`}
+          className={`min-h-0 px-4 md:pl-12 md:pr-0 overflow-hidden bg-transparent ${mobileView === "map" ? "hidden md:block" : "flex-1 md:flex-none"}`}
         >
           <PubList
             places={pubList}

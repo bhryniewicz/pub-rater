@@ -63,7 +63,7 @@ export function PubList({
   return (
     <aside className="flex flex-col h-full overflow-hidden">
       <div className="md:pr-4 pt-2 pb-4 shrink-0 flex items-center justify-between gap-3">
-        <p className="font-mono text-[12px] font-extrabold uppercase shrink-0">
+        <p className="font-mono text-[12px] font-extrabold shrink-0">
           <span className="text-muted-foreground">{t("availableLabel")}</span>
           <span className="text-primary">
             {" "}

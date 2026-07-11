@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getUser } from "@/lib/supabase/auth";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { OnboardForm } from "@/features/profile/components/onboard-form";
 
 export default async function OnboardPage() {

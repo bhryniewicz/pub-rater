@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { MutationConfig } from "@/lib/react-query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type Preferences = {
   pub_preference: boolean;

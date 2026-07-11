@@ -128,6 +128,41 @@ export function getCloseTimeToday(hours: OpeningHours, now = new Date()): string
   return slot.close === '24:00' ? '00:00' : slot.close
 }
 
+// Minutes remaining until the currently-open slot closes. Returns null when the
+// place is closed, open-ended, or has no hours today.
+export function minutesUntilClose(hours: OpeningHours, now = new Date()): number | null {
+  const jsDay = now.getDay()
+  const todayIdx = jsDay === 0 ? 6 : jsDay - 1
+  const currentMins = now.getHours() * 60 + now.getMinutes()
+
+  const today = hours[DAY_KEYS[todayIdx]]
+  if (today && today.close !== null) {
+    const [openH, openM] = today.open.split(':').map(Number)
+    const openMins = openH * 60 + openM
+    const [closeH, closeM] = today.close.split(':').map(Number)
+    const closeMins = closeH === 24 ? 1440 : closeH * 60 + closeM
+    if (closeMins > openMins) {
+      if (currentMins >= openMins && currentMins < closeMins) return closeMins - currentMins
+    } else if (closeMins < openMins) {
+      // Crosses midnight, still before midnight today (e.g. 22:00-02:00 at 23:30)
+      if (currentMins >= openMins) return closeMins + 1440 - currentMins
+    }
+  }
+
+  // Yesterday's cross-midnight slot carrying into the early hours of today
+  const yestIdx = (todayIdx + 6) % 7
+  const yest = hours[DAY_KEYS[yestIdx]]
+  if (yest && yest.close !== null) {
+    const [openH, openM] = yest.open.split(':').map(Number)
+    const openMins = openH * 60 + openM
+    const [closeH, closeM] = yest.close.split(':').map(Number)
+    const closeMins = closeH === 24 ? 1440 : closeH * 60 + closeM
+    if (closeMins > 0 && closeMins < openMins && currentMins < closeMins) return closeMins - currentMins
+  }
+
+  return null
+}
+
 export function isOpenLate(hours: OpeningHours): boolean {
   for (const key of DAY_KEYS) {
     const slot = hours[key]

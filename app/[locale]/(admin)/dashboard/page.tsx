@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { requireDashboard } from "@/lib/auth";
+import { requireDashboard } from "@/lib/supabase/auth";
 import { AdminConsole } from "@/features/admin/components/admin-console";
 import { OwnerConsole } from "@/features/owner/components/owner-console";
 

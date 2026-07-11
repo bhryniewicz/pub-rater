@@ -2,9 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/lib/query-keys";
+import { QUERY_KEYS } from "@/lib/query";
 import type { PlaceData } from "./get-place";
-import type { MutationConfig } from "@/lib/react-query";
+import type { MutationConfig } from "@/lib/query/config";
 
 type ToggleThumbsUpInput = {
   reviewId: string;
