@@ -5,7 +5,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useEffect, useRef } from "react";
 import { toast, Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
-import { GeolocationProvider } from "@/context/geolocation-context";
 import { SearchProvider } from "@/context/search-context";
 import { FilterProvider } from "@/context/filter-context";
 import { PostHogProvider } from "posthog-js/react";
@@ -86,11 +85,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
         <QueryClientProvider client={clientRef.current}>
           <AuthSync />
-          <GeolocationProvider>
-            <FilterProvider>
-              <SearchProvider>{children}</SearchProvider>
-            </FilterProvider>
-          </GeolocationProvider>
+          <FilterProvider>
+            <SearchProvider>{children}</SearchProvider>
+          </FilterProvider>
           <Toaster position="bottom-right" richColors />
           <ReactQueryDevtools />
         </QueryClientProvider>

@@ -9,77 +9,33 @@ import type { MapMarker } from "@/lib/supabase";
 import { getMarkersQueryOptions } from "@/lib/markers/get-markers";
 import { useSearch } from "@/context/search-context";
 import { useFilters } from "@/context/filter-context";
-import { VOIVODESHIPS } from "@/lib/constants";
-import { type Filters, DEFAULT_FILTERS } from "@/lib/filters";
-import { useGeolocation } from "@/context/geolocation-context";
-import { useUser } from "@/features/profile/api/get-user";
-import { useOwnedMarkers } from "@/lib/markers/get-owned-markers";
 import { PlaceTypeIcon, placeTypeGradient } from "@/lib/place-type";
 import { analytics } from "@/lib/analytics";
-import { AmenityFilters } from "@/components/amenity-filter-bar";
 import {
   Command,
   CommandList,
   CommandItem,
   CommandEmpty,
 } from "@/components/ui/command";
-import { Switch } from "@/components/ui/switch";
-import {
-  LuSearch,
-  LuSlidersHorizontal,
-  LuCrosshair,
-  LuChevronUp,
-  LuBeer,
-} from "react-icons/lu";
-import { Drawer } from "@/components/ui/drawer";
+import { LuSearch, LuSlidersHorizontal } from "react-icons/lu";
 
-export function SearchBar() {
+type SearchBarProps = {
+  filtersOpen: boolean;
+  onToggleFilters: () => void;
+};
+
+export function SearchBar({ filtersOpen, onToggleFilters }: SearchBarProps) {
   const t = useTranslations("searchBar");
 
-  const RATING_OPTIONS: { label: string; value: number | null }[] = [
-    { label: t("ratingAny"), value: null },
-    { label: "3.0+", value: 3 },
-    { label: "3.5+", value: 3.5 },
-    { label: "4.0+", value: 4 },
-    { label: "4.5+", value: 4.5 },
-  ];
   const [input, setInput] = useState("");
   const [debouncedInput] = useDebounce(input, 500);
   const [open, setOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<
-    Record<string, boolean>
-  >({});
-  const [showAllCategories, setShowAllCategories] = useState(false);
-
-  function toggleSection(key: string) {
-    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  // Pending (staged) filter state — only applied when "Show places" is clicked
-  const [pending, setPending] = useState<Filters>(DEFAULT_FILTERS);
-
-  function setPendingFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
-    setPending((prev) => ({ ...prev, [key]: value }));
-  }
 
   const { searchQuery, searchSelectedId, setSearchQuery, setSearchSelectedId, clearSearch } =
     useSearch();
-  const { filters, setFilters } = useFilters();
-  const { status: geoStatus, coords: geoCoords, enable: enableGeo } = useGeolocation();
-  const { user, profile } = useUser();
-  const { data: ownedIds = null } = useOwnedMarkers(
-    user?.id,
-    !!user && profile?.role === "owner",
-  );
+  const { filters } = useFilters();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Sync pending state from applied context when panel opens
-  useEffect(() => {
-    if (filtersOpen) setPending(filters);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtersOpen]);
 
   useEffect(() => {
     setOpen(debouncedInput.length > 0 && !filtersOpen);
@@ -99,44 +55,6 @@ export function SearchBar() {
           )
           .slice(0, 8)
       : [];
-
-  const categoryCounts = markers.reduce<Record<string, number>>((acc, m) => {
-    acc[m.place_type] = (acc[m.place_type] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
-
-  const categoryItems: { type: string; count: number }[] = [
-    ...sortedCategories.map(([type, count]) => ({ type, count })),
-  ];
-  if (user && (profile?.liked_places.length ?? 0) > 0) {
-    categoryItems.push({ type: "liked", count: profile!.liked_places.length });
-  }
-  if (profile?.role === "owner" && (ownedIds?.length ?? 0) > 0) {
-    categoryItems.push({ type: "owned", count: ownedIds!.length });
-  }
-
-  function toggleCategory(type: string) {
-    if (type === "liked") {
-      setPending((p) => ({ ...p, categories: [], owned: false, liked: !p.liked }));
-    } else if (type === "owned") {
-      setPending((p) => ({ ...p, categories: [], liked: false, owned: !p.owned }));
-    } else {
-      setPending((p) => ({
-        ...p,
-        liked: false,
-        owned: false,
-        categories: !p.categories.includes(type) ? [type] : [],
-      }));
-    }
-  }
-
-  const pendingActiveTypes = [
-    ...pending.categories,
-    ...(pending.liked ? ["liked"] : []),
-    ...(pending.owned ? ["owned"] : []),
-  ];
 
   function normalizedQuery() {
     return debouncedInput.trim().toLowerCase().replace(/\s+/g, " ");
@@ -174,15 +92,6 @@ export function SearchBar() {
     setInput("");
     clearSearch();
     setOpen(false);
-  }
-
-  function clearPendingFilters() {
-    setPending(DEFAULT_FILTERS);
-  }
-
-  function handleApplyFilters() {
-    setFilters(pending);
-    setFiltersOpen(false);
   }
 
   useEffect(() => {
@@ -228,7 +137,7 @@ export function SearchBar() {
             if (e.key === "Enter") handleSearchAll();
             if (e.key === "Escape") {
               setOpen(false);
-              setFiltersOpen(false);
+              if (filtersOpen) onToggleFilters();
             }
           }}
           placeholder={t("placeholder")}
@@ -244,7 +153,7 @@ export function SearchBar() {
         )}
         <button
           onClick={() => {
-            setFiltersOpen((v) => !v);
+            onToggleFilters();
             setOpen(false);
           }}
           className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
@@ -308,240 +217,6 @@ export function SearchBar() {
           </Command>
         </div>
       )}
-
-      {/* Filters drawer */}
-      <Drawer
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        title={t("filters")}
-        headerAction={
-          <button
-            onClick={clearPendingFilters}
-            className="text-sm font-semibold text-primary hover:opacity-80 transition-opacity"
-          >
-            {t("clear")}
-          </button>
-        }
-        footer={
-          <button
-            onClick={handleApplyFilters}
-            className="btn-gradient w-full py-4 rounded-2xl font-bold text-base"
-          >
-            {t("showPlaces")}
-          </button>
-        }
-      >
-        <div className="px-4 py-5 flex flex-col gap-7">
-
-                {/* Place type — mobile only */}
-                {categoryItems.length > 0 && (
-                  <div className="md:hidden">
-                    <button
-                      onClick={() => toggleSection("placeType")}
-                      className="flex w-full items-center justify-between mb-3"
-                    >
-                      <span className="mono-label text-primary text-[11px] font-semibold">{t("placeType")}</span>
-                      <LuChevronUp
-                        size={16}
-                        className={`text-muted-foreground transition-transform ${
-                          collapsedSections.placeType ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-                    {!collapsedSections.placeType && (
-                      <div className="flex flex-col gap-2">
-                        <AmenityFilters
-                          variant="list"
-                          items={
-                            showAllCategories
-                              ? categoryItems
-                              : categoryItems.slice(0, 4)
-                          }
-                          activeTypes={pendingActiveTypes}
-                          onToggle={toggleCategory}
-                        />
-                        {categoryItems.length > 4 && (
-                          <button
-                            onClick={() => setShowAllCategories((v) => !v)}
-                            className="self-start px-1 py-1 text-sm font-semibold text-primary hover:underline"
-                          >
-                            {showAllCategories
-                              ? t("showLess")
-                              : t("showMoreCategories")}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Minimum rating */}
-                <div>
-                  <button
-                    onClick={() => toggleSection("minRating")}
-                    className="flex w-full items-center justify-between mb-3"
-                  >
-                    <span className="mono-label text-primary text-[11px] font-semibold">{t("minRating")}</span>
-                    <LuChevronUp
-                      size={16}
-                      className={`text-muted-foreground transition-transform ${
-                        collapsedSections.minRating ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {!collapsedSections.minRating && (
-                  <div className="flex flex-nowrap gap-1.5">
-                    {RATING_OPTIONS.map(({ label, value }) => (
-                      <button
-                        key={label}
-                        onClick={() => setPendingFilter("minRating", value)}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-colors ${
-                          pending.minRating === value
-                            ? "bg-primary border-transparent text-primary-foreground"
-                            : "border-border text-muted-foreground hover:border-foreground/20"
-                        }`}
-                      >
-                        {value !== null && (
-                          <LuBeer
-                            size={12}
-                            className={
-                              pending.minRating === value
-                                ? "text-primary-foreground"
-                                : "text-primary"
-                            }
-                          />
-                        )}
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  )}
-                </div>
-
-                {/* Opening hours */}
-                <div>
-                  <button
-                    onClick={() => toggleSection("openingHours")}
-                    className="flex w-full items-center justify-between mb-3"
-                  >
-                    <span className="mono-label text-primary text-[11px] font-semibold">{t("openingHours")}</span>
-                    <LuChevronUp
-                      size={16}
-                      className={`text-muted-foreground transition-transform ${
-                        collapsedSections.openingHours ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {!collapsedSections.openingHours && (
-                  <div className="rounded-2xl border border-border bg-card/40">
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <div>
-                        <p
-                          className={`text-sm font-medium ${
-                            pending.open ? "text-open" : "text-foreground"
-                          }`}
-                        >
-                          {t("openNow")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {t("openNowDesc")}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={pending.open}
-                        onCheckedChange={() => setPendingFilter("open", !pending.open)}
-                        className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
-                      />
-                    </div>
-                    <div className="h-px bg-border mx-4" />
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <div>
-                        <p
-                          className={`text-sm font-medium ${
-                            pending.openLate ? "text-open" : "text-foreground"
-                          }`}
-                        >
-                          {t("openLate")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {t("openLateDesc")}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={pending.openLate}
-                        onCheckedChange={() => setPendingFilter("openLate", !pending.openLate)}
-                        className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
-                      />
-                    </div>
-                  </div>
-                  )}
-                </div>
-
-                {/* Location */}
-                <div>
-                  <button
-                    onClick={() => toggleSection("location")}
-                    className="flex w-full items-center justify-between mb-3"
-                  >
-                    <span className="mono-label text-primary text-[11px] font-semibold">{t("location")}</span>
-                    <LuChevronUp
-                      size={16}
-                      className={`text-muted-foreground transition-transform ${
-                        collapsedSections.location ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {!collapsedSections.location && (
-                  <div className="flex flex-col gap-3">
-                    <select
-                      value={pending.voivodeship ?? ""}
-                      onChange={(e) => setPendingFilter("voivodeship", e.target.value || null)}
-                      className="w-full bg-input border border-border text-foreground text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-ring appearance-none cursor-pointer"
-                    >
-                      <option value="">{t("allVoivodeships")}</option>
-                      {VOIVODESHIPS.map((v) => (
-                        <option key={v.key} value={v.key}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="h-px bg-border" />
-                    <button
-                      onClick={() => {
-                        if (geoStatus === "denied" || geoStatus === "unavailable") return;
-                        if (pending.radius !== null) {
-                          setPendingFilter("radius", null);
-                        } else {
-                          if (geoStatus === "idle") enableGeo();
-                          setPendingFilter("radius", 1);
-                        }
-                      }}
-                      disabled={geoStatus === "denied" || geoStatus === "unavailable"}
-                      className={`flex w-full items-center gap-2.5 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                        pending.radius !== null ? "text-foreground" : "text-primary hover:opacity-80"
-                      }`}
-                    >
-                      <LuCrosshair size={16} />
-                      {geoStatus === "loading" ? t("locating") : t("useMyLocation")}
-                    </button>
-                    {pending.radius !== null && geoCoords && (
-                      <select
-                        value={pending.radius}
-                        onChange={(e) => setPendingFilter("radius", Number(e.target.value))}
-                        className="w-full bg-input border border-border text-foreground text-sm rounded-full px-4 py-2.5 focus:outline-none focus:border-ring"
-                      >
-                        <option value="0.1">0.1 km</option>
-                        <option value="0.5">0.5 km</option>
-                        <option value="1">1 km</option>
-                        <option value="2">2 km</option>
-                        <option value="5">5 km</option>
-                      </select>
-                    )}
-                  </div>
-                  )}
-                </div>
-        </div>
-      </Drawer>
     </div>
   );
 }

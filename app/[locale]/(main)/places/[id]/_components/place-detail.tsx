@@ -8,7 +8,7 @@ import { type Review } from "@/lib/supabase";
 import { isOpenNow, DAY_KEYS } from "@/lib/opening-hours";
 import type { OpeningHours } from "@/schemas/entities";
 import { useUser } from "@/features/profile/api/get-user";
-import { useGeolocation } from "@/context/geolocation-context";
+import { useGeolocation } from "@/lib/geolocation/use-geolocation";
 import { LuNavigation, LuThumbsUp, LuPencil, LuCheck, LuShare2 } from "react-icons/lu";
 import { PubLine } from "@/assets/icons";
 import { ClaimForm } from "@/features/requests/components/claim-form";

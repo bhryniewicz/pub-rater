@@ -11,6 +11,7 @@ type DrawerProps = {
   title?: string;
   headerAction?: React.ReactNode;
   footer?: React.ReactNode;
+  hideHeaderBorder?: boolean;
   children: React.ReactNode;
 };
 
@@ -20,6 +21,7 @@ export function Drawer({
   title,
   headerAction,
   footer,
+  hideHeaderBorder,
   children,
 }: DrawerProps) {
   const [mounted, setMounted] = useState(false);
@@ -63,7 +65,7 @@ export function Drawer({
             className="fixed inset-y-0 right-0 z-50 w-full md:max-w-sm bg-background flex flex-col shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
+            <div className={`flex items-center justify-between px-4 py-4 shrink-0${hideHeaderBorder ? "" : " border-b border-border"}`}>
               <button
                 onClick={onClose}
                 className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -71,7 +73,7 @@ export function Drawer({
                 <LuX size={18} />
               </button>
               {title ? (
-                <span className="text-primary font-bold text-base">{title}</span>
+                <span className="text-white font-bold text-base">{title}</span>
               ) : (
                 <div />
               )}

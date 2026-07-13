@@ -15,7 +15,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import type { ExpressionSpecification } from "mapbox-gl";
 import { type MapMarker } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
-import { useGeolocation } from "@/context/geolocation-context";
+import { useGeolocation } from "@/lib/geolocation/use-geolocation";
 import { useUser } from "@/features/profile/api/get-user";
 import { BeerRating } from "@/components/beer-rating";
 import { CountBadge } from "@/components/ui/count-badge";

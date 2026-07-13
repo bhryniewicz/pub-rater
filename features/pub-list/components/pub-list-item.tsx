@@ -11,7 +11,8 @@ import {
 } from "@/lib/opening-hours";
 import Image from "next/image";
 import { IoLocationSharp } from "react-icons/io5";
-import { LuMap } from "react-icons/lu";
+import { LuMap, LuCheck } from "react-icons/lu";
+import { PubMug } from "@/assets/icons";
 import { motion } from "framer-motion";
 import { HeartIcon, HeartOutlineIcon } from "@/assets/icons";
 import { PlaceTypeIcon } from "@/lib/place-type";
@@ -21,10 +22,18 @@ import {
   type AmenityKey,
 } from "@/lib/amenities";
 import { BeerRating } from "@/components/beer-rating";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useLikePlace } from "@/features/pub-list/api/like-place";
 import { analytics } from "@/lib/analytics";
 import { OpenStatus } from "./open-status";
 import { useReviewedMarkerIds } from "../api/get-reviewed-marker-ids";
+
+// Lighter, harmonized status palette for the espresso desktop-dark card.
+const DARK_STATUS_COLORS = {
+  open: "#6FBF73",
+  closingSoon: "#E3B84C",
+  closed: "#E36A6A",
+};
 
 const TicketBarcode = memo(function TicketBarcode({
   id,
@@ -79,6 +88,12 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
   const reviewedIds = useReviewedMarkerIds();
   const isValidated = reviewedIds.has(marker.id);
 
+  // Tag pills for the desktop-dark (espresso) redesign card — outline style.
+  const darkPillBase =
+    "shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-transparent font-mono font-semibold text-[8px] uppercase tracking-[0.12em]";
+  const darkPillMuted = `${darkPillBase} border-primary/45 text-primary`;
+  const darkPillCream = `${darkPillBase} border-[#6F6350] text-[#DBCDB2]`;
+
   const isLiked = likedPlaces.includes(marker.id);
 
   function handleShowMap() {
@@ -99,6 +114,7 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
     ? minutesUntilClose(marker.opening_hours)
     : null;
   const closingSoon = minsToClose !== null && minsToClose <= 60;
+  const reviewCount = marker.app_review_count ?? 0;
 
   return (
     <motion.li
@@ -106,8 +122,10 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
       initial={shouldAnimate ? { opacity: 0, y: 16 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="shrink-0 rounded-2xl overflow-hidden bg-card border border-transparent dark:border-white/10 hover:shadow-sm hover:shadow-black/10 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:overflow-visible"
+      className="shrink-0 rounded-2xl overflow-hidden bg-card border border-transparent dark:border-white/10 hover:shadow-sm hover:shadow-black/10 transition-all md:rounded md:flex md:flex-row md:gap-3 md:p-4 md:overflow-visible dark:bg-[radial-gradient(140%_160%_at_100%_0%,#2a1c10,#170f09_65%)] md:dark:gap-4 md:dark:rounded-[22px] md:dark:border-white/10 md:dark:p-4 md:dark:items-stretch"
     >
+      {/* Light theme (mobile + desktop): existing layout — hidden on all dark */}
+      <div className="contents dark:hidden">
       {/* Image — full-width on mobile, fixed square on desktop */}
       <div className="relative w-full h-52 bg-secondary md:w-36 md:h-36 md:shrink-0 md:rounded-lg md:overflow-hidden">
         <Link
@@ -297,6 +315,344 @@ export function PubListItem({ marker, shouldAnimate, onShowMap }: Props) {
               </span>
             </div>
           )}
+        </div>
+      </div>
+      </div>
+
+      {/* Desktop + dark: espresso redesign card */}
+      <div className="hidden md:dark:flex w-full flex-row items-stretch gap-4">
+        {/* Image — dark square with rating badge overlay */}
+        <Link
+          href={`/places/${marker.id}`}
+          onClick={() => analytics.pubCardOpened(marker)}
+          className="relative shrink-0 w-[120px] h-[120px] rounded-[18px] overflow-hidden border border-white/10 bg-[#241207]"
+        >
+          {marker.thumbnail ? (
+            <Image
+              src={marker.thumbnail}
+              alt={marker.name}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/25">
+              <PlaceTypeIcon placeType={marker.place_type} size={44} />
+            </div>
+          )}
+          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#160d07]/85 px-2 py-1 backdrop-blur-sm">
+            <PubMug size={16} className="text-primary" />
+            <span className="font-mono font-bold text-sm text-[#F2E8D4]">
+              {marker.app_rating && marker.app_rating > 0
+                ? marker.app_rating.toFixed(1)
+                : "–"}
+            </span>
+          </div>
+        </Link>
+
+        {/* Middle content — title/info at top, categories at bottom */}
+        <div className="flex flex-col flex-1 min-w-0 justify-between py-2">
+          <Link
+            href={`/places/${marker.id}`}
+            onClick={() => analytics.pubCardOpened(marker)}
+            className="flex flex-col gap-1 min-w-0"
+          >
+            <p className="font-mono font-bold text-xl text-[#F2E8D4] leading-tight truncate">
+              {marker.name}
+            </p>
+
+            <p className="flex items-center gap-1.5 flex-nowrap overflow-hidden text-[11px] font-sans font-semibold text-[#B3A184]">
+              {reviewCount > 0 && (
+                <span className="shrink-0">
+                  {t("reviewCount", { count: reviewCount })}
+                </span>
+              )}
+              {(marker.address || marker.city) && (
+                <>
+                  {reviewCount > 0 && (
+                    <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                      •
+                    </span>
+                  )}
+                  {marker.address ? (
+                    <Tooltip label={marker.address} className="min-w-0">
+                      <span className="min-w-0 truncate">{marker.address}</span>
+                    </Tooltip>
+                  ) : (
+                    <span className="shrink-0">{marker.city}</span>
+                  )}
+                </>
+              )}
+              {marker.price_tier != null && (
+                <>
+                  {(reviewCount > 0 ||
+                    marker.address ||
+                    marker.city) && (
+                    <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                      •
+                    </span>
+                  )}
+                  <span className="shrink-0 inline-flex items-center font-mono font-bold tracking-tight text-[#DBCDB2]">
+                    {[1, 2, 3, 4].map((i) => (
+                      <span
+                        key={i}
+                        className={
+                          i <= marker.price_tier!
+                            ? "text-[#DBCDB2]"
+                            : "text-[#DBCDB2]/30"
+                        }
+                      >
+                        $
+                      </span>
+                    ))}
+                  </span>
+                </>
+              )}
+              {(reviewCount > 0 ||
+                marker.address ||
+                marker.city ||
+                marker.price_tier != null) && (
+                <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                  •
+                </span>
+              )}
+              <span className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap">
+                <OpenStatus
+                  openNow={openNow}
+                  closeTime={closeTime}
+                  closingSoon={closingSoon}
+                  variant="inline"
+                  accentSecondary
+                  colors={DARK_STATUS_COLORS}
+                />
+              </span>
+            </p>
+          </Link>
+
+          {/* Tags — single scrollable row (verified first) */}
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {isValidated && (
+              <span className={darkPillCream}>
+                <LuCheck size={10} />
+                {t("verified")}
+              </span>
+            )}
+            <span className={darkPillMuted}>
+              <PlaceTypeIcon placeType={marker.place_type} size={10} />
+              {marker.place_type}
+            </span>
+            {amenities.map((key) => {
+              const config = AMENITY_CONFIG[key];
+              if (!config) return null;
+              const { labelKey, Icon } = config;
+              return (
+                <span key={key} className={darkPillMuted}>
+                  <Icon size={10} />
+                  {tGC(labelKey)}
+                </span>
+              );
+            })}
+            {marker.amenity_other && (
+              <span className={darkPillMuted}>
+                <OtherAmenityIcon size={10} />
+                {marker.amenity_other}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 shrink-0 self-start">
+          <button
+            onClick={handleShowMap}
+            aria-label={t("showOnMap")}
+            className="w-9 h-9 flex items-center justify-center rounded-[12px] border border-white/15 bg-transparent text-[#EFE4CF] hover:bg-white/8 transition cursor-pointer"
+          >
+            <LuMap size={14} />
+          </button>
+          {canLike && (
+            <button
+              onClick={handleLike}
+              aria-label={isLiked ? t("unlike") : t("like")}
+              className="w-9 h-9 flex items-center justify-center rounded-[12px] border border-white/15 bg-transparent hover:bg-white/8 transition cursor-pointer"
+            >
+              {isLiked ? (
+                <HeartIcon size={14} className="text-primary" />
+              ) : (
+                <HeartOutlineIcon size={14} className="text-[#EFE4CF]" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile + dark: espresso redesign card (vertical) */}
+      <div className="hidden max-md:dark:flex w-full flex-col">
+        {/* Hero image — full width with overlays */}
+        <Link
+          href={`/places/${marker.id}`}
+          onClick={() => analytics.pubCardOpened(marker)}
+          className="relative block w-full h-40 bg-[#241207]"
+        >
+          {marker.thumbnail ? (
+            <Image
+              src={marker.thumbnail}
+              alt={marker.name}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white/25">
+              <PlaceTypeIcon placeType={marker.place_type} size={52} />
+            </div>
+          )}
+
+          {/* Top-right: map + mark buttons */}
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                handleShowMap();
+              }}
+              aria-label={t("showOnMap")}
+              className="w-9 h-9 flex items-center justify-center rounded-[12px] border border-white/15 bg-black/40 backdrop-blur-sm text-[#EFE4CF] hover:bg-black/60 transition cursor-pointer"
+            >
+              <LuMap size={16} />
+            </button>
+            {canLike && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleLike();
+                }}
+                aria-label={isLiked ? t("unlike") : t("like")}
+                className="w-9 h-9 flex items-center justify-center rounded-[12px] border border-white/15 bg-black/40 backdrop-blur-sm hover:bg-black/60 transition cursor-pointer"
+              >
+                {isLiked ? (
+                  <HeartIcon size={16} className="text-primary" />
+                ) : (
+                  <HeartOutlineIcon size={16} className="text-[#EFE4CF]" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Bottom-left: rating badge */}
+          <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#160d07]/85 px-2 py-1 backdrop-blur-sm">
+            <PubMug size={16} className="text-primary" />
+            <span className="font-mono font-bold text-sm text-[#F2E8D4]">
+              {marker.app_rating && marker.app_rating > 0
+                ? marker.app_rating.toFixed(1)
+                : "–"}
+            </span>
+          </div>
+        </Link>
+
+        {/* Content below image */}
+        <div className="flex flex-col gap-2.5 p-4">
+          <Link
+            href={`/places/${marker.id}`}
+            onClick={() => analytics.pubCardOpened(marker)}
+            className="flex flex-col gap-1.5 min-w-0"
+          >
+            <p className="font-mono font-bold text-xl text-[#F2E8D4] leading-tight truncate">
+              {marker.name}
+            </p>
+
+            {/* Info line — horizontally scrollable */}
+            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-[11px] font-sans font-semibold text-[#B3A184]">
+              {reviewCount > 0 && (
+                <span className="shrink-0">
+                  {t("reviewCount", { count: reviewCount })}
+                </span>
+              )}
+              {(marker.address || marker.city) && (
+                <>
+                  {reviewCount > 0 && (
+                    <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                      •
+                    </span>
+                  )}
+                  <span className="shrink-0">
+                    {marker.address ?? marker.city}
+                  </span>
+                </>
+              )}
+              {marker.price_tier != null && (
+                <>
+                  {(reviewCount > 0 ||
+                    marker.address ||
+                    marker.city) && (
+                    <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                      •
+                    </span>
+                  )}
+                  <span className="shrink-0 inline-flex items-center font-mono font-bold tracking-tight text-[#DBCDB2]">
+                    {[1, 2, 3, 4].map((i) => (
+                      <span
+                        key={i}
+                        className={
+                          i <= marker.price_tier!
+                            ? "text-[#DBCDB2]"
+                            : "text-[#DBCDB2]/30"
+                        }
+                      >
+                        $
+                      </span>
+                    ))}
+                  </span>
+                </>
+              )}
+              {(reviewCount > 0 ||
+                marker.address ||
+                marker.city ||
+                marker.price_tier != null) && (
+                <span className="shrink-0 text-[#8A7A5E] text-[13px] leading-none">
+                  •
+                </span>
+              )}
+              <span className="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap">
+                <OpenStatus
+                  openNow={openNow}
+                  closeTime={closeTime}
+                  closingSoon={closingSoon}
+                  variant="inline"
+                  accentSecondary
+                  colors={DARK_STATUS_COLORS}
+                />
+              </span>
+            </div>
+          </Link>
+
+          {/* Tags — single scrollable row (verified first) */}
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {isValidated && (
+              <span className={darkPillCream}>
+                <LuCheck size={10} />
+                {t("verified")}
+              </span>
+            )}
+            <span className={darkPillMuted}>
+              <PlaceTypeIcon placeType={marker.place_type} size={10} />
+              {marker.place_type}
+            </span>
+            {amenities.map((key) => {
+              const config = AMENITY_CONFIG[key];
+              if (!config) return null;
+              const { labelKey, Icon } = config;
+              return (
+                <span key={key} className={darkPillMuted}>
+                  <Icon size={10} />
+                  {tGC(labelKey)}
+                </span>
+              );
+            })}
+            {marker.amenity_other && (
+              <span className={darkPillMuted}>
+                <OtherAmenityIcon size={10} />
+                {marker.amenity_other}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </motion.li>

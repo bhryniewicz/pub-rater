@@ -5,7 +5,7 @@ import { useSetLocale } from "@/context/intl-context";
 import { useTranslations, useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useGeolocation } from "@/context/geolocation-context";
+import { useGeolocation } from "@/lib/geolocation/use-geolocation";
 import { type PlaceRequest } from "@/features/requests/schemas";
 import { QUERY_KEYS } from "@/lib/query";
 import { useUserReviews } from "@/features/profile/api/get-user-reviews";

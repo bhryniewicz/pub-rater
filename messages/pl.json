@@ -37,7 +37,11 @@
     "langPl": "PL",
     "langEn": "EN",
     "logOut": "Wyloguj się",
-    "home": "Strona główna"
+    "home": "Strona główna",
+    "sectionNavigation": "Nawigacja",
+    "sectionAppearance": "Wygląd",
+    "sectionLanguage": "Język",
+    "sectionAccount": "Konto"
   },
   "home": {
     "loading": "Ładowanie...",
@@ -438,7 +442,9 @@
     "loadingMore": "Ładowanie więcej...",
     "allLoaded": "Wszystkie miejsca załadowane",
     "until": "do {time}",
-    "validated": "Zweryfikowano"
+    "validated": "Zweryfikowano",
+    "verified": "Zweryfikowane",
+    "reviewCount": "({count} opinii)"
   },
   "addPlace": {
     "title": "ZAPROPONUJ MIEJSCE",

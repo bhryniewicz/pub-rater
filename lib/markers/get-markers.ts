@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MapMarker } from "@/schemas/entities";
 import { useUser } from "@/features/profile/api/get-user";
-import { useGeolocation } from "@/context/geolocation-context";
+import { useGeolocation } from "@/lib/geolocation/use-geolocation";
 import { useFilters } from "@/context/filter-context";
 import { useSearch } from "@/context/search-context";
 import {

@@ -8,15 +8,16 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useUser } from "@/features/profile/api/get-user";
-import { useGeolocation } from "@/context/geolocation-context";
+import { useGeolocation } from "@/lib/geolocation/use-geolocation";
 import { SearchBar } from "./search-bar";
+import { FilterDrawer } from "./filter-drawer";
 import { AddPlaceDialog } from "@/components/add-place-dialog";
 import { Drawer } from "@/components/ui/drawer";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
 import {
   LuUser,
-  LuBuilding2,
   LuSun,
   LuMoon,
   LuMenu,
@@ -54,7 +55,13 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [addPlaceOpen, setAddPlaceOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Only one drawer can be open at a time; the inactive one unmounts.
+  const [activeDrawer, setActiveDrawer] = useState<"menu" | "filters" | null>(
+    null,
+  );
+  const menuOpen = activeDrawer === "menu";
+  const setMenuOpen = (nextOpen: boolean) =>
+    setActiveDrawer(nextOpen ? "menu" : null);
   // Placeholder — no persistent unread-notification count exists yet.
   const notificationCount = 3;
 
@@ -74,139 +81,159 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
     router.push("/");
   };
 
+  const sectionLabel = "mono-label text-primary text-[10px] font-semibold";
+
   const menuContent = (
-    <div className="px-4 py-5 flex flex-col gap-1">
-      {/* Home link */}
-      <Link
-        href="/"
-        onClick={() => setMenuOpen(false)}
-        className={menuLinkClass(null)}
-      >
-        <LuHouse size={16} />
-        {t("home")}
-      </Link>
-
-      <hr className="border-border my-1" />
-
-      {/* Theme toggle */}
-      <button
-        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-      >
-        {mounted && resolvedTheme === "dark" ? (
-          <LuSun size={16} />
-        ) : (
-          <LuMoon size={16} />
-        )}
-        <span className="flex-1 text-left">{t("darkMode")}</span>
-        <span
-          className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${mounted && resolvedTheme === "dark" ? "bg-primary" : "bg-muted"}`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${mounted && resolvedTheme === "dark" ? "translate-x-4" : "translate-x-0"}`}
-          />
-        </span>
-      </button>
-
-      <hr className="border-border my-1" />
-
-      {/* Language switcher */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
-        {(["pl", "en"] as const).map((lang) => (
-          <button
-            key={lang}
-            onClick={() => {
-              setLocale(lang);
-              setMenuOpen(false);
-            }}
-            className={`text-xs font-semibold px-2.5 py-1 rounded transition-colors ${
-              locale === lang
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+    <div className="px-4 py-4 flex flex-col gap-6">
+      {/* Navigation */}
+      <div>
+        <span className={sectionLabel}>{t("sectionNavigation")}</span>
+        <div className="mt-3 flex flex-col gap-1">
+          <Link
+            href="/"
+            onClick={() => setMenuOpen(false)}
+            className={menuLinkClass(null)}
           >
-            {lang === "pl" ? t("langPl") : t("langEn")}
-          </button>
-        ))}
+            <LuHouse size={16} />
+            {t("home")}
+          </Link>
+          {user && (
+            <>
+              {/* Add Place — in drawer on mobile only */}
+              {(!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
+                <button
+                  onClick={() => {
+                    setAddPlaceOpen(true);
+                    setMenuOpen(false);
+                  }}
+                  className="md:hidden flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  <LuMapPin size={16} />
+                  {t("addPlace")}
+                </button>
+              )}
+              {(isAdmin || isOwner) && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className={menuLinkClass("dashboard")}
+                >
+                  <LuLayoutDashboard size={16} />
+                  {t("dashboard")}
+                </Link>
+              )}
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                className={menuLinkClass("profile")}
+              >
+                <LuUser size={16} />
+                {t("profile")}
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
-      <hr className="border-border my-1" />
+      {/* Appearance */}
+      <div>
+        <span className={sectionLabel}>{t("sectionAppearance")}</span>
+        <div className="mt-3 flex flex-col gap-3">
+          {/* Theme toggle */}
+          <div className="rounded-2xl border border-border bg-card/40">
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                {mounted && resolvedTheme === "dark" ? (
+                  <LuSun size={18} className="text-primary shrink-0" />
+                ) : (
+                  <LuMoon size={18} className="text-primary shrink-0" />
+                )}
+                <p className="text-[13px] font-medium text-foreground">
+                  {t("darkMode")}
+                </p>
+              </div>
+              <Switch
+                checked={mounted && resolvedTheme === "dark"}
+                onCheckedChange={() =>
+                  setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                }
+                className="data-unchecked:bg-muted-foreground dark:data-unchecked:bg-muted-foreground data-checked:bg-primary"
+              />
+            </div>
+          </div>
 
+          {/* Language switcher */}
+          <div className="grid grid-cols-2 gap-2">
+            {(["pl", "en"] as const).map((lang) => (
+              <button
+                key={lang}
+                onClick={() => {
+                  setLocale(lang);
+                  setMenuOpen(false);
+                }}
+                className={`py-2.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  locale === lang
+                    ? "bg-primary text-primary-foreground border-transparent"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {lang === "pl" ? t("langPl") : t("langEn")}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Account */}
       {user ? (
-        <>
-          {/* Add Place — in drawer on mobile only */}
-          {(!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
+        <div>
+          <span className={sectionLabel}>{t("sectionAccount")}</span>
+          <div className="mt-3">
             <button
-              onClick={() => {
-                setAddPlaceOpen(true);
-                setMenuOpen(false);
-              }}
-              className="md:hidden flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              onClick={handleLogOut}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors"
             >
-              <LuMapPin size={16} />
-              {t("addPlace")}
+              <LuLogOut size={16} />
+              {t("logOut")}
             </button>
-          )}
-          {(isAdmin || isOwner) && (
-            <Link
-              href="/dashboard"
-              onClick={() => setMenuOpen(false)}
-              className={menuLinkClass("dashboard")}
-            >
-              <LuLayoutDashboard size={16} />
-              {t("dashboard")}
-            </Link>
-          )}
-          <Link
-            href="/profile"
-            onClick={() => setMenuOpen(false)}
-            className={menuLinkClass("profile")}
-          >
-            <LuUser size={16} />
-            {t("profile")}
-          </Link>
-          <hr className="border-border my-1" />
-          <button
-            onClick={handleLogOut}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-500/10 transition-colors"
-          >
-            <LuLogOut size={16} />
-            {t("logOut")}
-          </button>
-        </>
+          </div>
+        </div>
       ) : (
         <>
-          <div className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <LuUser size={13} /> {t("userZone")}
+          <div>
+            <span className={sectionLabel}>{t("userZone")}</span>
+            <div className="mt-3 flex flex-col gap-1">
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <LuLogIn size={16} />
+                {t("signIn")}
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <LuUserPlus size={16} />
+                {t("createAccount")}
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/login"
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <LuLogIn size={16} />
-            {t("signIn")}
-          </Link>
-          <Link
-            href="/signup"
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <LuUserPlus size={16} />
-            {t("createAccount")}
-          </Link>
-          <hr className="border-border my-1" />
-          <div className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <LuBuilding2 size={13} /> {t("ownerZone")}
+          <div>
+            <span className={sectionLabel}>{t("ownerZone")}</span>
+            <div className="mt-3 flex flex-col gap-1">
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <LuLogIn size={16} />
+                {t("ownerSignIn")}
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/login"
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <LuLogIn size={16} />
-            {t("ownerSignIn")}
-          </Link>
         </>
       )}
     </div>
@@ -241,7 +268,12 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
           {isSearchVisible && (
             <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none">
               <div className="w-full pointer-events-auto">
-                <SearchBar />
+                <SearchBar
+                  filtersOpen={activeDrawer === "filters"}
+                  onToggleFilters={() =>
+                    setActiveDrawer((d) => (d === "filters" ? null : "filters"))
+                  }
+                />
               </div>
             </div>
           )}
@@ -278,7 +310,9 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
 
             {/* Hamburger — all screen sizes */}
             <motion.button
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() =>
+                setActiveDrawer((d) => (d === "menu" ? null : "menu"))
+              }
               aria-label={t("openMenu")}
               whileTap={{ scale: 0.88 }}
               className="h-10 w-10 flex items-center justify-center text-primary hover:text-primary border border-primary/40 rounded-lg hover:border-primary transition-colors"
@@ -291,14 +325,24 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
         {/* Search bar — mobile only */}
         {isSearchVisible && (
           <div className="pb-5 md:hidden">
-            <SearchBar />
+            <SearchBar
+              filtersOpen={activeDrawer === "filters"}
+              onToggleFilters={() =>
+                setActiveDrawer((d) => (d === "filters" ? null : "filters"))
+              }
+            />
           </div>
         )}
       </header>
 
-      <Drawer open={menuOpen} onClose={() => setMenuOpen(false)}>
+      <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} hideHeaderBorder>
         {menuContent}
       </Drawer>
+
+      <FilterDrawer
+        open={activeDrawer === "filters"}
+        onClose={() => setActiveDrawer(null)}
+      />
 
       <AddPlaceDialog
         open={addPlaceOpen}

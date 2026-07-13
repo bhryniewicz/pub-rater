@@ -37,7 +37,11 @@
     "langPl": "PL",
     "langEn": "EN",
     "logOut": "Log out",
-    "home": "Home"
+    "home": "Home",
+    "sectionNavigation": "Navigation",
+    "sectionAppearance": "Appearance",
+    "sectionLanguage": "Language",
+    "sectionAccount": "Account"
   },
   "home": {
     "loading": "Loading...",
@@ -438,7 +442,9 @@
     "loadingMore": "Loading more...",
     "allLoaded": "All places loaded",
     "until": "until {time}",
-    "validated": "Validated"
+    "validated": "Validated",
+    "verified": "Verified",
+    "reviewCount": "({count} reviews)"
   },
   "addPlace": {
     "title": "SUGGEST A PLACE",
