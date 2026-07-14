@@ -285,7 +285,7 @@ export function Navbar({ isSearchVisible = true }: NavbarProps) {
               (!(isAdmin || isOwner) || activeSegment !== "dashboard") && (
                 <button
                   onClick={() => setAddPlaceOpen(true)}
-                  className="hidden md:inline-flex h-10 items-center gap-1.5 text-xs font-medium text-foreground border border-primary/40 rounded-lg px-3 hover:border-primary transition-colors"
+                  className="hidden md:inline-flex h-10 items-center gap-1.5 text-xs font-semibold text-foreground border border-primary/40 rounded-lg px-3 hover:border-primary transition-colors"
                 >
                   <LuPlus size={15} className="text-primary" />
                   {t("addPlace")}

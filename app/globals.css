@@ -86,6 +86,32 @@
   --sidebar-accent-foreground: #2B1A08;
   --sidebar-border: #EEDB8C;
   --sidebar-ring: #B27A1E;
+
+  /* pub list card — light */
+  --pubcard-bg: linear-gradient(90deg, #f1e6d0, #fdfbf6 60%);
+  --pubcard-border: #e7d8ba;
+  --pubcard-title: #2e2013;
+  --pubcard-meta: #7c6647;
+  --pubcard-sep: #bfa980;
+  --pubcard-price: #a05e18;
+  --pubcard-price-off: #cbb891;
+  --pubcard-img-bg: #f0e6d1;
+  --pubcard-img-icon: rgba(160, 94, 24, 0.35);
+  --pubcard-badge-bg: rgba(22, 13, 7, 0.72);
+  --pubcard-badge-border: rgba(255, 255, 255, 0.15);
+  --pubcard-badge-text: #f2e8d4;
+  --pubcard-btn-border: rgba(160, 94, 24, 0.35);
+  --pubcard-btn-text: #7c6647;
+  --pubcard-btn-hover: rgba(160, 94, 24, 0.1);
+  --chip-cat-bg: rgba(224, 145, 63, 0.15);
+  --chip-cat-border: rgba(224, 145, 63, 0.4);
+  --chip-cat-text: #a05e18;
+  --chip-plain-bg: #f0e6d1;
+  --chip-plain-border: #e0d0ac;
+  --chip-plain-text: #8a7154;
+  --status-open: #2f5a3a;
+  --status-closing: #9a6b16;
+  --status-closed: #a83a32;
 }
 
 .dark {
@@ -123,6 +149,32 @@
   --sidebar-ring: #DBA054;
   --open: #16a34a;
   --closed: #ef4444;
+
+  /* pub list card — dark */
+  --pubcard-bg: radial-gradient(140% 160% at 100% 0%, #2a1c10, #170f09 65%);
+  --pubcard-border: rgba(255, 255, 255, 0.1);
+  --pubcard-title: #f2e8d4;
+  --pubcard-meta: #b3a184;
+  --pubcard-sep: #8a7a5e;
+  --pubcard-price: #dbcdb2;
+  --pubcard-price-off: rgba(219, 205, 178, 0.3);
+  --pubcard-img-bg: #241207;
+  --pubcard-img-icon: rgba(255, 255, 255, 0.25);
+  --pubcard-badge-bg: rgba(22, 13, 7, 0.85);
+  --pubcard-badge-border: rgba(255, 255, 255, 0.1);
+  --pubcard-badge-text: #f2e8d4;
+  --pubcard-btn-border: rgba(255, 255, 255, 0.15);
+  --pubcard-btn-text: #efe4cf;
+  --pubcard-btn-hover: rgba(255, 255, 255, 0.08);
+  --chip-cat-bg: rgba(224, 145, 63, 0.12);
+  --chip-cat-border: rgba(224, 145, 63, 0.4);
+  --chip-cat-text: #e0913f;
+  --chip-plain-bg: rgba(219, 205, 178, 0.06);
+  --chip-plain-border: #6f6350;
+  --chip-plain-text: #dbcdb2;
+  --status-open: #6fbf73;
+  --status-closing: #e3b84c;
+  --status-closed: #e36a6a;
 }
 
 /* Home page ambient — straw base + soft category-color glows (light) */

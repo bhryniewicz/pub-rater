@@ -14,6 +14,9 @@ type Props = {
   accentSecondary?: boolean;
   /** Override status colors (inline variant). Defaults to the app ACCENT palette. */
   colors?: { open: string; closingSoon: string; closed: string };
+  /** Render status text as a solid color rather than the hex-derived gradient.
+   *  Required when `colors` are CSS variables (gradient needs a real hex). */
+  solid?: boolean;
 };
 
 export function OpenStatus({
@@ -24,12 +27,15 @@ export function OpenStatus({
   secondaryClassName = "text-foreground/80",
   accentSecondary = false,
   colors,
+  solid = false,
 }: Props) {
   const t = useTranslations("pubList");
 
   const openColor = colors?.open ?? ACCENT.green;
   const closingColor = colors?.closingSoon ?? ACCENT.yellow;
   const closedColor = colors?.closed ?? ACCENT.red;
+  const statusStyle = (c: string) =>
+    solid ? { color: c } : gradientTextStyle(c);
 
   const status =
     openNow === true
@@ -77,13 +83,13 @@ export function OpenStatus({
   if (status === "open") {
     return (
       <>
-        <span className="font-sans font-bold" style={gradientTextStyle(openColor)}>
+        <span className="font-sans font-bold" style={statusStyle(openColor)}>
           {t("openStatus")}
         </span>
         {closeTime && (
           <span
             className={accentSecondary ? "font-sans font-bold" : `${secondaryClassName} font-sans`}
-            style={accentSecondary ? gradientTextStyle(openColor) : undefined}
+            style={accentSecondary ? statusStyle(openColor) : undefined}
           >
             {t("until", { time: closeTime })}
           </span>
@@ -95,13 +101,13 @@ export function OpenStatus({
   if (status === "closing-soon") {
     return (
       <>
-        <span className="font-sans font-bold" style={gradientTextStyle(closingColor)}>
+        <span className="font-sans font-bold" style={statusStyle(closingColor)}>
           {t("closingSoon")}
         </span>
         {closeTime && (
           <span
             className={accentSecondary ? "font-sans font-bold" : `${secondaryClassName} font-sans`}
-            style={accentSecondary ? gradientTextStyle(closingColor) : undefined}
+            style={accentSecondary ? statusStyle(closingColor) : undefined}
           >
             {t("until", { time: closeTime })}
           </span>
@@ -112,7 +118,7 @@ export function OpenStatus({
 
   if (status === "closed") {
     return (
-      <span className="font-sans font-bold" style={gradientTextStyle(closedColor)}>
+      <span className="font-sans font-bold" style={statusStyle(closedColor)}>
         {t("closedStatus")}
       </span>
     );
